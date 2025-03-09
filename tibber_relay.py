@@ -6,6 +6,11 @@ import schedule
 import time
 from dotenv import load_dotenv
 import os
+import sys
+
+# Output to stdout and stderr directly, no buffering
+sys.stdout.reconfigure(line_buffering=True)  # Python 3.7+
+sys.stderr.reconfigure(line_buffering=True)
 
 load_dotenv()
 
