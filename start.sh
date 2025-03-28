@@ -21,9 +21,9 @@ if [ -f "requirements.txt" ]; then
 fi
 
 script_name="tibber_relay.py"
-log_file=".log"
+log_file="tibber_relay.log"
 
 echo "Starting $script_name..."
-nohup $python_bin "$script_name" >> "$log_file" 2>&1 &
+nohup $python_bin -u "$script_name" >> "$log_file" 2>&1 &
 
 echo "Script started. Check $log_file for logs."

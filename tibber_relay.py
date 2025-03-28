@@ -1,12 +1,16 @@
 #!/bin/env python3
+import iso8601
 import os
-import sys
-import time
 import requests
 import schedule
-import iso8601
+import sys
+import time
 from datetime import datetime
 from dotenv import load_dotenv
+
+# Output to stdout and stderr directly, no buffering
+sys.stdout.reconfigure(line_buffering=True)  # Python 3.7+
+sys.stderr.reconfigure(line_buffering=True)
 
 # Load environment variables
 load_dotenv()
