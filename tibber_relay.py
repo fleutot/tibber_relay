@@ -15,7 +15,7 @@ tibber_token = os.getenv("TIBBER_API_TOKEN")
 tibber_url = "https://api.tibber.com/v1-beta/gql"
 relay_ip_addr = "192.168.1.106"
 relay_instance_id = 0  # Relay ID from within the Shelly unit
-price_limit_sek = 0.5
+price_limit_sek = 0.2
 
 price_data = {}
 
@@ -56,12 +56,12 @@ class Relay:
     https://shelly.guide/webhooks-https-requests/
     """
 
-    def __init__(self, ip, instance_id, manual_override_hours=5):
+    def __init__(self, ip, instance_id, manual_override_nb_runs=5):
         self._ip = ip
         self._id = instance_id
         self._prev_status = None  # Status set by this script
         self._overridden_hours_left = 0
-        self.manual_override_hours = manual_override_hours  # Override delay
+        self.manual_override_nb_runs = manual_override_nb_runs  # Override delay
 
     def status_get(self):
         try:
@@ -70,7 +70,7 @@ class Relay:
                 timeout=5
             )
             response.raise_for_status()
-            return response.json().get("output", False) is True
+            return response.json().get(f"switch:{self._id}").get("output") is True
         except requests.RequestException as e:
             print(f"!Error fetching relay status: {e}",
                   file=sys.stderr)
@@ -84,13 +84,13 @@ class Relay:
                 and status is not None
         ):
             # Something else changed the status externally.
-            self._overridden_hours_left = self.manual_override_hours
+            self._overridden_hours_left = self.manual_override_nb_runs
             self._prev_status = status
 
         if self._overridden_hours_left > 0:
             print(
-                f"-> External change detected, skipping update. "
-                f"{self._overridden_hours_left} hours left"
+                f"-> External change detected, skipping relay update. "
+                f"{self._overridden_hours_left} loops left"
             )
             self._overridden_hours_left -= 1
             return
