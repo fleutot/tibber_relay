@@ -7,6 +7,7 @@ import sys
 import time
 from datetime import datetime
 from dotenv import load_dotenv
+from enum import Enum
 
 # Output to stdout and stderr directly, no buffering
 sys.stdout.reconfigure(line_buffering=True)  # Python 3.7+
@@ -23,46 +24,80 @@ price_limit_sek = 0.2
 
 price_data = {}
 
-def price_list_fetch():
-    headers = {
-        "Authorization": f"Bearer {tibber_token}",
-        "Content-Type": "application/json",
-    }
+class PriceList:
+    def __init__(self, n_cheapest_limit=5):
+        self.n_cheapest_limit = n_cheapest_limit
 
-    body = {
-        "query": "{ viewer { homes { currentSubscription { priceInfo { today { total startsAt } tomorrow { total startsAt } } } } } }"
-    }
-
-    try:
-        response = requests.post(tibber_url, headers=headers, json=body, timeout=15)
-        response.raise_for_status()
-        data = response.json().get("data", {}).get("viewer", {}).get("homes", [{}])[0]
-        price_info = data.get("currentSubscription", {}).get("priceInfo", {})
-
-        today_prices = price_info.get("today", [])
-        tomorrow_prices = price_info.get("tomorrow", [])
-        date_price = today_prices + tomorrow_prices
-
-        global price_data
-        price_data = {
-            iso8601.parse_date(item['startsAt']).replace(tzinfo=None): item['total']
-            for item in date_price
+    def fetch(self):
+        headers = {
+            "Authorization": f"Bearer {tibber_token}",
+            "Content-Type": "application/json",
         }
-        print(price_data)
-    except requests.RequestException as e:
-        print(f"!Error fetching price data: {e}", file=sys.stderr)
-    except KeyError as e:
-        print(f"!Error parsing price data: Missing key {e}", file=sys.stderr)
 
+        body = {
+            "query": "{ viewer { homes { currentSubscription { priceInfo { today { total startsAt } tomorrow { total startsAt } } } } } }"
+        }
+
+        try:
+            response = requests.post(tibber_url, headers=headers,
+                                     json=body, timeout=15)
+            response.raise_for_status()
+            data = response.json().get("data", {}).get("viewer", {}).get("homes", [{}])[0]
+            price_info = data.get("currentSubscription", {}).get("priceInfo", {})
+
+            today_prices = price_info.get("today", [])
+            tomorrow_prices = price_info.get("tomorrow", [])
+            date_price = today_prices + tomorrow_prices
+
+            self.data = {
+                iso8601.parse_date(item['startsAt']).replace(tzinfo=None): item['total']
+                for item in date_price
+            }
+            print(self.data)
+        except requests.RequestException as e:
+            print(f"!Error fetching price data: {e}", file=sys.stderr)
+        except KeyError as e:
+            print(f"!Error parsing price data: Missing key {e}",
+                  file=sys.stderr)
+
+    def price_now_get(self):
+        now = datetime.now().replace(minute=0, second=0,
+                                     microsecond=0)
+        if now not in self.data:
+            print(f"!Warning: No price data for {now}",
+                  file=sys.stderr)
+            raise Exception("Now price data available")
+
+        print(f"Price at {now}: {self.data[now]}")
+        return self.data[now]
+
+    def price_now_is_in_n_cheapest_today(self):
+        now_date = datetime.now().date()
+
+        today_prices = [v for k, v in self.data.items()
+                        if k.date() == now_date]
+        today_prices.sort()
+        price_limit = today_prices[self.n_cheapest_limit]
+        now_price = self.price_now_get()
+        print(f"price {now_price} within {self.n_cheapest_limit} cheapest: {now_price <= price_limit}")
+        return now_price <= price_limit
+
+class RelayMode(Enum):
+    PRICE_LIMIT = 1
+    N_CHEAPEST_TODAY = 2
 
 class Relay:
     """See Shelly webhook documentation:
     https://shelly.guide/webhooks-https-requests/
     """
 
-    def __init__(self, ip, instance_id, manual_override_nb_runs=5):
+    def __init__(self, ip, instance_id, price_list,
+                 manual_override_nb_runs=5,
+                 relay_mode=RelayMode.PRICE_LIMIT):
         self._ip = ip
         self._id = instance_id
+        self._price_list = price_list
+        self._mode = relay_mode
         self._prev_status = None  # Status set by this script
         self._overridden_hours_left = 0
         self.manual_override_nb_runs = manual_override_nb_runs  # Override delay
@@ -113,26 +148,31 @@ class Relay:
         self._prev_status = self.status_get()
 
     def update(self):
-        # TODO: Use outside temperature! Or/and inside temperature
-        now = datetime.now().replace(minute=0, second=0, microsecond=0)
+        try:
+            if self._mode == RelayMode.PRICE_LIMIT:
+                enable = (
+                    self._price_list.price_now_get() < price_limit_sek
+                )
+            elif self._mode == RelayMode.N_CHEAPEST_TODAY:
+                enable = self._price_list.price_now_is_in_n_cheapest_today()
+            else:
+                raise ValueError(f"Unidentified mode")
 
-        if now not in price_data:
-            print(f"!Warning: No price data for {now}", file=sys.stderr)
-            enable = False
-        else:
-            print(f"Price at {now}: {price_data[now]} (limit: {price_limit_sek})")
-            enable = price_data[now] < price_limit_sek
-
-        self.turn(enable)
+            self.turn(enable)
+        except e:
+            print("Could not fetch price for now, turn off")
+            self.turn(False)
 
 
 if __name__ == "__main__":
-    relay = Relay(relay_ip_addr, relay_instance_id)
+    price_list = PriceList(n_cheapest_limit=5)
+    relay = Relay(relay_ip_addr, relay_instance_id, price_list,
+                  relay_mode=RelayMode.N_CHEAPEST_TODAY)
 
     schedule.every().hour.at(":00").do(relay.update)
-    schedule.every().day.at("21:42").do(price_list_fetch)  # Fetch tomorrow's prices
+    schedule.every().day.at("21:42").do(price_list.fetch)  # Fetch tomorrow's prices
 
-    price_list_fetch()
+    price_list.fetch()
     relay.update()
 
     while True:
