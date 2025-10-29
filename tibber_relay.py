@@ -159,9 +159,18 @@ class Relay:
                 raise ValueError(f"Unidentified mode")
 
             self.turn(enable)
-        except e:
-            print("Could not fetch price for now, turn off")
+
+            # Clear retry job on success
+            schedule.clear('retry')
+
+        except ValueError as e:
+            raise e
+        except:
+            print("Could not fetch price for now, turn off and retry")
             self.turn(False)
+            # Schedule periodic retry (only if not already scheduled)
+            if not schedule.get_jobs('retry'):
+                schedule.every(1).minutes.do(self.update).tag('retry')
 
 
 if __name__ == "__main__":
