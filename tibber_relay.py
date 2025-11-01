@@ -27,6 +27,7 @@ price_data = {}
 class PriceList:
     def __init__(self, n_cheapest_limit=5):
         self.n_cheapest_limit = n_cheapest_limit
+        self.data = {}  # Initialize empty dict, populated by fetch()
 
     def fetch(self):
         headers = {
