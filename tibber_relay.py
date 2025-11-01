@@ -1,5 +1,6 @@
 #!/bin/env python3
 import iso8601
+import json
 import os
 import requests
 import schedule
@@ -25,6 +26,48 @@ relay_instance_id = 0  # Relay ID from within the Shelly unit
 price_limit_sek = 0.2
 
 price_data = {}
+
+# Configuration file
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'config.json')
+
+def load_config():
+    """Load configuration from config.json file."""
+    global price_limit_sek
+
+    default_config = {
+        'mode': 'N_CHEAPEST_TODAY',
+        'price_limit_sek': 0.2,
+        'n_cheapest_limit': 5
+    }
+
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                print(f"Loaded configuration from {CONFIG_FILE}")
+                return config
+        except Exception as e:
+            print(f"Error loading config file: {e}", file=sys.stderr)
+            print("Using default configuration")
+            return default_config
+    else:
+        print(f"No config file found, using defaults")
+        return default_config
+
+def save_config(mode, price_limit, n_cheapest):
+    """Save configuration to config.json file."""
+    config = {
+        'mode': mode,
+        'price_limit_sek': price_limit,
+        'n_cheapest_limit': n_cheapest
+    }
+
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=2)
+        print(f"Configuration saved to {CONFIG_FILE}")
+    except Exception as e:
+        print(f"Error saving config file: {e}", file=sys.stderr)
 
 class PriceList:
     def __init__(self, n_cheapest_limit=5):
@@ -167,10 +210,16 @@ class Relay:
             self.turn(False)
 
 
+# Load saved configuration
+saved_config = load_config()
+price_limit_sek = saved_config['price_limit_sek']
+
 # Initialize objects at module level so they can be imported
-price_list = PriceList(n_cheapest_limit=5)
-relay = Relay(relay_ip_addr, relay_instance_id, price_list,
-              relay_mode=RelayMode.N_CHEAPEST_TODAY)
+price_list = PriceList(n_cheapest_limit=saved_config['n_cheapest_limit'])
+
+# Convert mode string to enum
+relay_mode = RelayMode.PRICE_LIMIT if saved_config['mode'] == 'PRICE_LIMIT' else RelayMode.N_CHEAPEST_TODAY
+relay = Relay(relay_ip_addr, relay_instance_id, price_list, relay_mode=relay_mode)
 
 # Flask API for inter-service communication (localhost only)
 api = Flask(__name__)
@@ -248,6 +297,9 @@ def api_update_config():
         if 'n_cheapest_limit' in data:
             price_list.n_cheapest_limit = int(data['n_cheapest_limit'])
             print(f"N cheapest limit updated to: {price_list.n_cheapest_limit}")
+
+        # Save configuration to file
+        save_config(relay._mode.name, price_limit_sek, price_list.n_cheapest_limit)
 
         return jsonify({
             'success': True,
