@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tibber Relay Control</title>
+    <title>Sjöbackens acktank</title>
     <style>
         * {
             margin: 0;
@@ -12,24 +12,26 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Georgia, 'Times New Roman', serif;
+            background: linear-gradient(135deg, #8b7355 0%, #d4a574 50%, #a0826d 100%);
             min-height: 100vh;
             padding: 20px;
-            color: #333;
+            color: #3d2817;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
         h1 {
-            color: white;
+            color: #fff8dc;
             text-align: center;
             margin-bottom: 30px;
-            font-size: 2.5rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            font-size: 2.8rem;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+            font-weight: normal;
+            letter-spacing: 2px;
         }
 
         .grid {
@@ -40,22 +42,26 @@
         }
 
         .card {
-            background: white;
-            border-radius: 12px;
+            background: #faf8f3;
+            border-radius: 8px;
             padding: 24px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 8px rgba(61, 40, 23, 0.2);
+            border: 2px solid #d4a574;
             transition: transform 0.2s;
         }
 
         .card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 6px 12px rgba(61, 40, 23, 0.3);
         }
 
         .card h2 {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             margin-bottom: 16px;
-            color: #667eea;
+            color: #8b4513;
+            font-weight: normal;
+            border-bottom: 2px solid #d4a574;
+            padding-bottom: 8px;
         }
 
         .status-indicator {
@@ -74,13 +80,13 @@
         }
 
         .status-dot.on {
-            background-color: #10b981;
-            box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+            background-color: #228b22;
+            box-shadow: 0 0 12px rgba(34, 139, 34, 0.5);
         }
 
         .status-dot.off {
-            background-color: #ef4444;
-            box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+            background-color: #8b4513;
+            box-shadow: 0 0 12px rgba(139, 69, 19, 0.5);
         }
 
         @keyframes pulse {
@@ -91,14 +97,15 @@
         .price-display {
             font-size: 2.5rem;
             font-weight: bold;
-            color: #667eea;
+            color: #8b4513;
             margin: 12px 0;
         }
 
         .info-text {
-            color: #6b7280;
+            color: #6b5d4f;
             font-size: 0.9rem;
             margin-top: 8px;
+            font-style: italic;
         }
 
         .controls {
@@ -110,17 +117,18 @@
         button {
             flex: 1;
             padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
+            border: 2px solid #8b4513;
+            border-radius: 6px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            font-family: Georgia, serif;
         }
 
         button:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 8px rgba(61, 40, 23, 0.3);
         }
 
         button:active {
@@ -128,30 +136,30 @@
         }
 
         .btn-on {
-            background-color: #10b981;
+            background-color: #228b22;
             color: white;
         }
 
         .btn-on:hover {
-            background-color: #059669;
+            background-color: #1a6b1a;
         }
 
         .btn-off {
-            background-color: #ef4444;
+            background-color: #8b4513;
             color: white;
         }
 
         .btn-off:hover {
-            background-color: #dc2626;
+            background-color: #6b3410;
         }
 
         .btn-save {
-            background-color: #667eea;
+            background-color: #cd853f;
             color: white;
         }
 
         .btn-save:hover {
-            background-color: #5568d3;
+            background-color: #b8722d;
         }
 
         .chart-card {
@@ -160,13 +168,13 @@
 
         #priceChart {
             width: 100%;
-            height: 300px;
+            height: 350px;
             margin-top: 16px;
         }
 
         .override-warning {
-            background-color: #fef3c7;
-            border-left: 4px solid #f59e0b;
+            background-color: #fff3cd;
+            border-left: 4px solid #cd853f;
             padding: 12px;
             margin-top: 12px;
             border-radius: 4px;
@@ -178,26 +186,28 @@
         }
 
         .override-warning strong {
-            color: #92400e;
+            color: #8b4513;
         }
 
         .last-update {
             text-align: center;
-            color: white;
+            color: #fff8dc;
             margin-top: 20px;
             font-size: 0.9rem;
             opacity: 0.9;
+            font-style: italic;
         }
 
         .mode-badge {
             display: inline-block;
-            background-color: #e0e7ff;
-            color: #4c1d95;
+            background-color: #f5deb3;
+            color: #8b4513;
             padding: 4px 12px;
-            border-radius: 12px;
+            border-radius: 6px;
             font-size: 0.85rem;
             font-weight: 600;
             margin-top: 8px;
+            border: 1px solid #d4a574;
         }
 
         canvas {
@@ -213,7 +223,7 @@
             display: block;
             font-weight: 600;
             margin-bottom: 8px;
-            color: #374151;
+            color: #3d2817;
         }
 
         .radio-group {
@@ -245,26 +255,28 @@
             align-items: center;
             gap: 10px;
             padding: 10px;
-            background-color: #f9fafb;
+            background-color: #f5f5dc;
             border-radius: 6px;
+            border: 1px solid #d4a574;
         }
 
         .input-field input {
             flex: 1;
             padding: 8px 12px;
-            border: 1px solid #d1d5db;
+            border: 1px solid #d4a574;
             border-radius: 4px;
             font-size: 1rem;
+            background-color: white;
         }
 
         .input-field span {
-            color: #6b7280;
+            color: #6b5d4f;
             font-size: 0.9rem;
         }
 
         .config-hint {
             font-size: 0.85rem;
-            color: #6b7280;
+            color: #6b5d4f;
             margin-top: 4px;
             font-style: italic;
         }
@@ -276,79 +288,79 @@
 </head>
 <body>
     <div class="container">
-        <h1>Tibber Relay Control</h1>
+        <h1>Sjöbackens acktank</h1>
 
         <div class="grid">
             <div class="card">
-                <h2>Relay Status</h2>
+                <h2>Relästatus</h2>
                 <div class="status-indicator">
                     <div class="status-dot" id="statusDot"></div>
-                    <span id="statusText">Loading...</span>
+                    <span id="statusText">Laddar...</span>
                 </div>
-                <div class="info-text" id="modeInfo">Mode: Loading...</div>
+                <div class="info-text" id="modeInfo">Läge: Laddar...</div>
 
                 <div class="override-warning" id="overrideWarning">
-                    <strong>Manual Override Active</strong><br>
+                    <strong>Manuell styrning aktiv</strong><br>
                     <span id="overrideText"></span>
                 </div>
 
                 <div class="controls">
-                    <button class="btn-on" onclick="controlRelay('on')">Turn ON</button>
-                    <button class="btn-off" onclick="controlRelay('off')">Turn OFF</button>
+                    <button class="btn-on" onclick="controlRelay('on')">PÅ</button>
+                    <button class="btn-off" onclick="controlRelay('off')">AV</button>
                 </div>
             </div>
 
             <div class="card">
-                <h2>Configuration</h2>
+                <h2>Inställningar</h2>
                 <div class="config-group">
-                    <label>Operation Mode</label>
+                    <label>Driftläge</label>
                     <div class="radio-group">
                         <div class="radio-option">
                             <input type="radio" id="modePriceLimit" name="mode" value="PRICE_LIMIT" onchange="updateConfigInputs()">
-                            <label for="modePriceLimit">Price Limit</label>
+                            <label for="modePriceLimit">Prisgräns</label>
                         </div>
                         <div class="radio-option">
                             <input type="radio" id="modeNCheapest" name="mode" value="N_CHEAPEST_TODAY" onchange="updateConfigInputs()">
-                            <label for="modeNCheapest">N Cheapest Hours</label>
+                            <label for="modeNCheapest">Billigaste timmar</label>
                         </div>
                     </div>
                 </div>
 
                 <div class="config-group" id="priceLimitGroup">
                     <div class="input-field">
-                        <label for="priceLimit">Price Limit:</label>
+                        <label for="priceLimit">Prisgräns:</label>
                         <input type="number" id="priceLimit" step="0.01" min="0">
                         <span>SEK/kWh</span>
                     </div>
-                    <div class="config-hint">Relay turns ON when price is below this threshold</div>
+                    <div class="config-hint">Relä slås på när priset understiger gränsen</div>
                 </div>
 
                 <div class="config-group" id="nCheapestGroup">
                     <div class="input-field">
-                        <label for="nCheapest">Cheapest Hours:</label>
+                        <label for="nCheapest">Antal timmar:</label>
                         <input type="number" id="nCheapest" min="1" max="24">
-                        <span>hours/day</span>
+                        <span>timmar/dag</span>
                     </div>
-                    <div class="config-hint">Relay turns ON during this many cheapest hours</div>
+                    <div class="config-hint">Relä slås på under dygnets billigaste timmar</div>
                 </div>
 
-                <button class="btn-save" style="width: 100%; margin-top: 8px;" onclick="saveConfig()">Save Configuration</button>
+                <button class="btn-save" style="width: 100%; margin-top: 8px;" onclick="saveConfig()">Spara inställningar</button>
             </div>
 
             <div class="card">
-                <h2>Current Electricity Price</h2>
+                <h2>Aktuellt elpris</h2>
                 <div class="price-display" id="currentPrice">-- SEK</div>
-                <div class="info-text">Price per kWh including VAT</div>
+                <div class="info-text">Pris per kWh inkl. moms</div>
             </div>
 
             <div class="card chart-card">
-                <h2>Today's Electricity Prices</h2>
+                <h2>Dagens elpriser [SEK]</h2>
                 <canvas id="priceChart"></canvas>
             </div>
         </div>
 
         <div class="last-update">
-            Last updated: <span id="lastUpdate">Never</span>
+            Senast uppdaterad: <span id="lastUpdate">Aldrig</span>
         </div>
     </div>
 
@@ -367,12 +379,12 @@
 
                 if (data.relay_on) {
                     statusDot.className = 'status-dot on';
-                    statusText.textContent = 'ON';
-                    statusText.style.color = '#10b981';
+                    statusText.textContent = 'PÅ';
+                    statusText.style.color = '#228b22';
                 } else {
                     statusDot.className = 'status-dot off';
-                    statusText.textContent = 'OFF';
-                    statusText.style.color = '#ef4444';
+                    statusText.textContent = 'AV';
+                    statusText.style.color = '#8b4513';
                 }
 
                 // Update current price
@@ -389,26 +401,27 @@
                 if (currentConfig.mode === 'PRICE_LIMIT') {
                     modeDetail = ` (${currentConfig.price_limit_sek} SEK)`;
                 } else if (currentConfig.mode === 'N_CHEAPEST_TODAY') {
-                    modeDetail = ` (${currentConfig.n_cheapest_limit} hours)`;
+                    modeDetail = ` (${currentConfig.n_cheapest_limit} timmar)`;
                 }
-                modeInfo.innerHTML = `Mode: <span class="mode-badge">${data.mode}${modeDetail}</span>`;
+                const modeName = data.mode === 'PRICE_LIMIT' ? 'Prisgräns' : 'Billigaste timmar';
+                modeInfo.innerHTML = `Läge: <span class="mode-badge">${modeName}${modeDetail}</span>`;
 
                 // Update override warning
                 const overrideWarning = document.getElementById('overrideWarning');
                 const overrideText = document.getElementById('overrideText');
                 if (data.override_hours_left > 0) {
                     overrideWarning.className = 'override-warning active';
-                    overrideText.textContent = `Automatic control paused for ${data.override_hours_left} more hour(s)`;
+                    overrideText.textContent = `Automatisk styrning pausad i ${data.override_hours_left} timme(r) till`;
                 } else {
                     overrideWarning.className = 'override-warning';
                 }
 
                 // Update last update time
-                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('sv-SE');
 
             } catch (error) {
                 console.error('Error fetching status:', error);
-                document.getElementById('statusText').textContent = 'Error';
+                document.getElementById('statusText').textContent = 'Fel';
             }
         }
 
@@ -462,7 +475,7 @@
                 const nCheapest = parseInt(document.getElementById('nCheapest').value);
 
                 if (!mode) {
-                    alert('Please select a mode');
+                    alert('Välj ett driftläge');
                     return;
                 }
 
@@ -481,16 +494,16 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    alert('Configuration saved successfully!');
+                    alert('Inställningar sparade!');
                     loadConfig();
                     updateStatus();
                     updatePriceChart();
                 } else {
-                    alert('Error: ' + (data.error || 'Unknown error'));
+                    alert('Fel: ' + (data.error || 'Okänt fel'));
                 }
             } catch (error) {
                 console.error('Error saving config:', error);
-                alert('Failed to save configuration');
+                alert('Kunde inte spara inställningar');
             }
         }
 
@@ -521,7 +534,7 @@
 
             // Set canvas size
             canvas.width = canvas.offsetWidth;
-            canvas.height = 300;
+            canvas.height = 350;
 
             const padding = 60;
             const width = canvas.width - padding * 2;
@@ -531,10 +544,10 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (priceData.length === 0) {
-                ctx.fillStyle = '#6b7280';
-                ctx.font = '16px sans-serif';
+                ctx.fillStyle = '#6b5d4f';
+                ctx.font = '16px Georgia';
                 ctx.textAlign = 'center';
-                ctx.fillText('No price data available', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Ingen prisdata tillgänglig', canvas.width / 2, canvas.height / 2);
                 return;
             }
 
@@ -571,24 +584,24 @@
                 const isCheap = price <= cheapestThreshold;
                 let fillColor;
                 if (isCurrentHour) {
-                    fillColor = isCheap ? 'rgba(16, 185, 129, 1)' : 'rgba(102, 126, 234, 1)';  // Darker
+                    fillColor = isCheap ? 'rgba(34, 139, 34, 1)' : 'rgba(139, 69, 19, 1)';  // Darker
                 } else {
-                    fillColor = isCheap ? 'rgba(16, 185, 129, 0.6)' : 'rgba(102, 126, 234, 0.6)';
+                    fillColor = isCheap ? 'rgba(34, 139, 34, 0.6)' : 'rgba(139, 69, 19, 0.6)';
                 }
 
                 ctx.fillStyle = fillColor;
                 ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
 
                 // Draw price on top
-                ctx.fillStyle = '#374151';
-                ctx.font = '10px sans-serif';
+                ctx.fillStyle = '#3d2817';
+                ctx.font = '10px Georgia';
                 ctx.textAlign = 'center';
                 ctx.fillText(price.toFixed(2), x + barWidth / 2, y - 5);
             });
 
             // Draw labels (only hours divisible by 3: 0, 3, 6, 9, 12, 15, 18, 21)
-            ctx.fillStyle = '#6b7280';
-            ctx.font = '12px sans-serif';
+            ctx.fillStyle = '#6b5d4f';
+            ctx.font = '12px Georgia';
             ctx.textAlign = 'center';
             priceData.forEach((item, i) => {
                 const priceDate = new Date(item.time);
@@ -602,10 +615,10 @@
                 }
             });
 
-            // Draw Y-axis labels
+            // Draw Y-axis labels (without "SEK")
             ctx.textAlign = 'right';
-            ctx.fillText(maxPrice.toFixed(2) + ' SEK', padding - 10, padding + 10);
-            ctx.fillText(minPrice.toFixed(2) + ' SEK', padding - 10, padding + height);
+            ctx.fillText(maxPrice.toFixed(2), padding - 10, padding + 10);
+            ctx.fillText(minPrice.toFixed(2), padding - 10, padding + height);
         }
 
         // Control relay
@@ -619,11 +632,11 @@
                 if (data.success) {
                     updateStatus();  // Refresh status immediately
                 } else {
-                    alert('Error: ' + (data.error || 'Unknown error'));
+                    alert('Fel: ' + (data.error || 'Okänt fel'));
                 }
             } catch (error) {
                 console.error('Error controlling relay:', error);
-                alert('Failed to control relay');
+                alert('Kunde inte styra relä');
             }
         }
 
