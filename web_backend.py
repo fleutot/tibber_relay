@@ -57,9 +57,14 @@ def get_prices():
 
 @app.route('/api/relay/on', methods=['POST'])
 def turn_relay_on():
-    """Manually turn relay on."""
+    """Manually turn relay on with optional override duration."""
     try:
-        response = requests.post(f'{RELAY_API}/command', json={'command': 'turn_on'}, timeout=5)
+        data = request.get_json() or {}
+        payload = {'command': 'turn_on'}
+        if 'override_hours' in data:
+            payload['override_hours'] = data['override_hours']
+
+        response = requests.post(f'{RELAY_API}/command', json=payload, timeout=5)
         response.raise_for_status()
         return jsonify(response.json())
     except requests.RequestException as e:
@@ -67,9 +72,14 @@ def turn_relay_on():
 
 @app.route('/api/relay/off', methods=['POST'])
 def turn_relay_off():
-    """Manually turn relay off."""
+    """Manually turn relay off with optional override duration."""
     try:
-        response = requests.post(f'{RELAY_API}/command', json={'command': 'turn_off'}, timeout=5)
+        data = request.get_json() or {}
+        payload = {'command': 'turn_off'}
+        if 'override_hours' in data:
+            payload['override_hours'] = data['override_hours']
+
+        response = requests.post(f'{RELAY_API}/command', json=payload, timeout=5)
         response.raise_for_status()
         return jsonify(response.json())
     except requests.RequestException as e:

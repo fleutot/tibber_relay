@@ -298,6 +298,18 @@
                     <span id="statusText">Laddar...</span>
                 </div>
                 <div class="info-text" id="modeInfo">Läge: Laddar...</div>
+            </div>
+
+            <div class="card">
+                <h2>Manuell styrning</h2>
+                <div class="config-group">
+                    <div class="input-field">
+                        <label for="overrideHours">Antal timmar:</label>
+                        <input type="number" id="overrideHours" min="1" max="24" value="6">
+                        <span>timmar</span>
+                    </div>
+                    <div class="config-hint">Pausar automatisk styrning under vald period</div>
+                </div>
 
                 <div class="override-warning" id="overrideWarning">
                     <strong>Manuell styrning aktiv</strong><br>
@@ -624,8 +636,12 @@
         // Control relay
         async function controlRelay(action) {
             try {
+                const overrideHours = parseInt(document.getElementById('overrideHours').value);
+
                 const response = await fetch(`/api/relay/${action}`, {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ override_hours: overrideHours })
                 });
                 const data = await response.json();
 

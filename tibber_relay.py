@@ -263,16 +263,23 @@ def api_update_config():
 
 @api.route('/api/command', methods=['POST'])
 def api_command():
-    """Execute relay command (turn on/off)."""
+    """Execute relay command (turn on/off) with optional override duration."""
     try:
         data = flask_request.get_json()
         command = data.get('command')
+        override_hours = data.get('override_hours')
 
         if command == 'turn_on':
             relay.turn(True)
+            if override_hours is not None:
+                relay._overridden_hours_left = int(override_hours)
+                print(f"Relay turned on with {override_hours} hour override")
             return jsonify({'success': True, 'message': 'Relay turned on'})
         elif command == 'turn_off':
             relay.turn(False)
+            if override_hours is not None:
+                relay._overridden_hours_left = int(override_hours)
+                print(f"Relay turned off with {override_hours} hour override")
             return jsonify({'success': True, 'message': 'Relay turned off'})
         else:
             return jsonify({'success': False, 'error': 'Unknown command'}), 400
