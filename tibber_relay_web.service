@@ -5,9 +5,9 @@ Requires=tibber_relay.service
 
 [Service]
 Type=simple
-User=root
+User=gauthier
 WorkingDirectory=/home/gauthier/sjobacken/tibber_relay
-Environment="PORT=80"
+Environment="PORT=8080"
 ExecStart=/home/gauthier/sjobacken/tibber_relay/venv/bin/python3 /home/gauthier/sjobacken/tibber_relay/web_backend.py
 Restart=always
 RestartSec=10

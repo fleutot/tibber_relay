@@ -7,7 +7,7 @@ This guide explains how to run Tibber Relay services as systemd services for aut
 - Services start automatically on boot
 - Automatic restart on failure
 - Logs managed by systemd/journalctl
-- Web backend runs on port 80 (no :8000 needed in URLs)
+- Web backend runs on port 8080 (standard alternative HTTP port)
 
 ## Installation
 
@@ -73,9 +73,13 @@ sudo systemctl disable tibber_relay_web.service
 ## Port Configuration
 
 - **Manual runs** (via `start_all.sh`): Web backend uses port 8000
-- **Systemd runs**: Web backend uses port 80 (set via `Environment="PORT=80"` in service file)
+- **Systemd runs**: Web backend uses port 8080 (set via `Environment="PORT=8080"` in service file)
 
 The web backend reads the port from the `PORT` environment variable, defaulting to 8000 if not set.
+
+Port 8080 is used instead of 80 to avoid:
+- Requiring root privileges
+- Browser forcing HTTPS on standard port 80
 
 ## Manual Testing vs Production
 
@@ -97,8 +101,8 @@ If services fail to start:
 
 3. **Check permissions:**
    ```bash
-   # Relay service runs as your user
-   # Web service runs as root (needed for port 80)
+   # Both services run as user 'gauthier'
+   # No root privileges required
    ```
 
 4. **Test manually first:**

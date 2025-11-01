@@ -130,12 +130,12 @@ def serve_static(path):
 
 if __name__ == '__main__':
     # Port can be configured via environment variable
-    # Default: 8000 for manual runs, systemd can set PORT=80
+    # Default: 8000 for manual runs, systemd can set PORT=8080
     port = int(os.getenv('PORT', 8000))
 
     print("Starting Tibber Relay Web Backend...")
     print("Access restricted to Tailscale network (100.x.x.x)")
-    print(f"Dashboard available at http://<tailscale-ip>{':' + str(port) if port != 80 else ''}/")
+    print(f"Dashboard available at http://<tailscale-ip>:{port}/")
 
     # Run on all interfaces, protected by Tailscale middleware
     app.run(host='0.0.0.0', port=port, debug=False)
