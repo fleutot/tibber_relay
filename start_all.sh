@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
-# Start both Tibber Relay service and Web Backend
+# Start both Tibber Relay services
+# - tibber_relay.py: Core relay control + API (localhost:8001)
+# - web_backend.py: Web dashboard (port 8000, Tailscale protected)
 #
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
@@ -23,7 +25,7 @@ if [ -f "requirements.txt" ]; then
     pip install -r requirements.txt
 fi
 
-# Start relay service
+# Start relay service (with internal API on localhost:8001)
 relay_script="tibber_relay.py"
 relay_log="tibber_relay.log"
 
@@ -32,10 +34,10 @@ nohup $python_bin -u "$relay_script" >> "$relay_log" 2>&1 &
 relay_pid=$!
 echo "Relay service started (PID: $relay_pid)"
 
-# Give the relay service a moment to initialize
+# Give relay service time to start API server
 sleep 2
 
-# Start web backend
+# Start web backend (proxies to relay API)
 web_script="web_backend.py"
 web_log="web_backend.log"
 
@@ -48,13 +50,15 @@ echo ""
 echo "========================================="
 echo "Both services started successfully!"
 echo "========================================="
-echo "Relay service PID: $relay_pid"
-echo "  Log file: $relay_log"
+echo "Relay Service:"
+echo "  PID: $relay_pid"
+echo "  API: http://127.0.0.1:8001 (localhost only)"
+echo "  Log: $relay_log"
 echo ""
-echo "Web backend PID: $web_pid"
-echo "  Log file: $web_log"
-echo ""
-echo "Access dashboard at: http://<tailscale-ip>:8000/"
+echo "Web Backend:"
+echo "  PID: $web_pid"
+echo "  Dashboard: http://<tailscale-ip>:8000/"
+echo "  Log: $web_log"
 echo ""
 echo "To stop services:"
 echo "  kill $relay_pid $web_pid"

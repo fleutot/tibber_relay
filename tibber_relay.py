@@ -8,6 +8,8 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 from enum import Enum
+from flask import Flask, jsonify, request as flask_request
+from threading import Thread
 
 # Output to stdout and stderr directly, no buffering
 sys.stdout.reconfigure(line_buffering=True)  # Python 3.7+
@@ -170,14 +172,94 @@ price_list = PriceList(n_cheapest_limit=5)
 relay = Relay(relay_ip_addr, relay_instance_id, price_list,
               relay_mode=RelayMode.N_CHEAPEST_TODAY)
 
+# Flask API for inter-service communication (localhost only)
+api = Flask(__name__)
+
+@api.route('/api/status')
+def api_get_status():
+    """Get current relay status and price."""
+    try:
+        current_price = price_list.price_now_get()
+    except Exception:
+        current_price = None
+
+    relay_on = relay.status_get()
+
+    return jsonify({
+        'relay_on': relay_on,
+        'current_price': current_price,
+        'mode': relay._mode.name,
+        'override_hours_left': relay._overridden_hours_left,
+        'timestamp': datetime.now().isoformat()
+    })
+
+@api.route('/api/prices')
+def api_get_prices():
+    """Get all available price data."""
+    prices = [
+        {
+            'time': time.isoformat(),
+            'price': price
+        }
+        for time, price in sorted(price_list.data.items())
+    ]
+
+    return jsonify({
+        'prices': prices,
+        'n_cheapest_limit': price_list.n_cheapest_limit
+    })
+
+@api.route('/api/config')
+def api_get_config():
+    """Get current configuration."""
+    return jsonify({
+        'mode': relay._mode.name,
+        'n_cheapest_limit': price_list.n_cheapest_limit,
+        'manual_override_runs': relay.manual_override_nb_runs,
+        'relay_ip': relay._ip
+    })
+
+@api.route('/api/command', methods=['POST'])
+def api_command():
+    """Execute relay command (turn on/off)."""
+    try:
+        data = flask_request.get_json()
+        command = data.get('command')
+
+        if command == 'turn_on':
+            relay.turn(True)
+            return jsonify({'success': True, 'message': 'Relay turned on'})
+        elif command == 'turn_off':
+            relay.turn(False)
+            return jsonify({'success': True, 'message': 'Relay turned off'})
+        else:
+            return jsonify({'success': False, 'error': 'Unknown command'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def run_api_server():
+    """Run Flask API server in background thread (localhost only)."""
+    api.run(host='127.0.0.1', port=8001, debug=False, use_reloader=False)
+
 if __name__ == "__main__":
-    # Run scheduled tasks only when executed as main script
+    print("Starting Tibber Relay Service...")
+
+    # Start API server in background thread (localhost:8001)
+    api_thread = Thread(target=run_api_server, daemon=True)
+    api_thread.start()
+    print("API server started on http://127.0.0.1:8001")
+
+    # Schedule tasks
     schedule.every().hour.at(":00").do(relay.update)
     schedule.every().day.at("21:42").do(price_list.fetch)  # Fetch tomorrow's prices
 
+    # Initial fetch and update
     price_list.fetch()
     relay.update()
 
+    print("Scheduler running - relay updates hourly, prices fetched daily at 21:42")
+
+    # Main scheduler loop
     while True:
         schedule.run_pending()
-        time.sleep(3 * 60)  # Run every 3 minutes
+        time.sleep(60)  # Check every minute

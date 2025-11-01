@@ -3,15 +3,18 @@
 Web backend for Tibber Relay control.
 Provides a Flask API for monitoring and controlling the relay via web interface.
 Access restricted to Tailscale network (100.x.x.x).
+
+Communicates with tibber_relay service via HTTP API on localhost:8001
 """
 from flask import Flask, jsonify, request, abort, send_from_directory
 from datetime import datetime
+import requests
 import sys
 
-# Import relay components from existing script
-from tibber_relay import relay, price_list, RelayMode
-
 app = Flask(__name__, static_folder='static')
+
+# Relay service API endpoint (localhost only)
+RELAY_API = 'http://127.0.0.1:8001/api'
 
 # Tailscale security middleware
 @app.before_request
@@ -36,63 +39,51 @@ def require_tailscale():
 def get_status():
     """Get current relay status, price, and system state."""
     try:
-        current_price = price_list.price_now_get()
-    except Exception as e:
-        current_price = None
-
-    relay_on = relay.status_get()
-
-    return jsonify({
-        'relay_on': relay_on,
-        'current_price': current_price,
-        'mode': relay._mode.name,
-        'override_hours_left': relay._overridden_hours_left,
-        'timestamp': datetime.now().isoformat()
-    })
+        response = requests.get(f'{RELAY_API}/status', timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({'error': f'Failed to communicate with relay service: {str(e)}'}), 503
 
 @app.route('/api/prices')
 def get_prices():
     """Get all available price data (today + tomorrow)."""
-    prices = [
-        {
-            'time': time.isoformat(),
-            'price': price
-        }
-        for time, price in sorted(price_list.data.items())
-    ]
-
-    return jsonify({
-        'prices': prices,
-        'n_cheapest_limit': price_list.n_cheapest_limit
-    })
+    try:
+        response = requests.get(f'{RELAY_API}/prices', timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({'error': f'Failed to communicate with relay service: {str(e)}'}), 503
 
 @app.route('/api/relay/on', methods=['POST'])
 def turn_relay_on():
     """Manually turn relay on."""
     try:
-        relay.turn(True)
-        return jsonify({'success': True, 'message': 'Relay turned on'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        response = requests.post(f'{RELAY_API}/command', json={'command': 'turn_on'}, timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({'success': False, 'error': f'Failed to communicate with relay service: {str(e)}'}), 503
 
 @app.route('/api/relay/off', methods=['POST'])
 def turn_relay_off():
     """Manually turn relay off."""
     try:
-        relay.turn(False)
-        return jsonify({'success': True, 'message': 'Relay turned off'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        response = requests.post(f'{RELAY_API}/command', json={'command': 'turn_off'}, timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({'success': False, 'error': f'Failed to communicate with relay service: {str(e)}'}), 503
 
 @app.route('/api/config')
 def get_config():
     """Get current configuration."""
-    return jsonify({
-        'mode': relay._mode.name,
-        'n_cheapest_limit': price_list.n_cheapest_limit,
-        'manual_override_runs': relay.manual_override_nb_runs,
-        'relay_ip': relay._ip
-    })
+    try:
+        response = requests.get(f'{RELAY_API}/config', timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({'error': f'Failed to communicate with relay service: {str(e)}'}), 503
 
 # Serve static files (HTML/CSS/JS)
 @app.route('/')

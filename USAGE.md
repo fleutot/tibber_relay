@@ -2,28 +2,37 @@
 
 ## Architecture Overview
 
-Your system now consists of **two independent services**:
+Your system consists of **two independent services** communicating via HTTP:
 
 ```
-┌─────────────────────────────────────────┐
-│  1. Relay Service (tibber_relay.py)     │
-│     - Scheduled price fetching          │
-│     - Automatic relay control           │
-│     - Runs independently                │
-└─────────────────────────────────────────┘
-
-┌─────────────────────────────────────────┐
-│  2. Web Backend (web_backend.py)        │
-│     - Flask API server                  │
-│     - Serves web dashboard              │
-│     - Tailscale-protected               │
-│     - Port: 8000                        │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  Service 1: tibber_relay.py                                 │
+│  ───────────────────────────────────────────────────────── │
+│  • Scheduled price fetching (daily at 21:42)                │
+│  • Automatic relay control (hourly at :00)                  │
+│  • Controls Shelly hardware directly                        │
+│  • Exposes HTTP API on localhost:8001                       │
+└─────────────────────────────────────────────────────────────┘
+                           ↕ HTTP (localhost only)
+┌─────────────────────────────────────────────────────────────┐
+│  Service 2: web_backend.py                                  │
+│  ───────────────────────────────────────────────────────── │
+│  • Serves web dashboard on port 8000                        │
+│  • Proxies requests to tibber_relay API                     │
+│  • Tailscale-protected (100.x.x.x)                          │
+│  • No hardware access                                       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Starting the Services
+**Benefits:**
+- Clean separation of concerns (control vs. UI)
+- Services can restart independently
+- Easy to add more services (solar, heating, etc.)
+- tibber_relay is single source of truth for relay state
 
-### Option 1: Start Both Services Together (Recommended)
+## Starting the Service
+
+### Recommended: Use the startup script
 ```bash
 ./start_all.sh
 ```
@@ -31,21 +40,18 @@ Your system now consists of **two independent services**:
 This will:
 - Create/activate Python virtual environment
 - Install dependencies (including Flask)
-- Start relay service in background
-- Start web backend in background
-- Show PIDs and log file locations
+- Start web backend with integrated scheduler
+- Show PID and log file location
 
-### Option 2: Start Services Individually
-
-**Start relay service only:**
-```bash
-./start.sh
-```
-
-**Start web backend only:**
+### Alternative: Run directly
 ```bash
 source venv/bin/activate
 python3 web_backend.py
+```
+
+### Legacy: Run scheduler only (no web interface)
+```bash
+./start.sh  # Runs tibber_relay.py standalone
 ```
 
 ## Accessing the Dashboard
@@ -152,28 +158,23 @@ Get current configuration:
 
 ### View Logs
 ```bash
-# Relay service logs
-tail -f tibber_relay.log
-
-# Web backend logs
 tail -f web_backend.log
 ```
 
-### Check Running Processes
+### Check Running Process
 ```bash
-ps aux | grep python
+ps aux | grep web_backend.py
 ```
 
-### Stop Services
+### Stop Service
 ```bash
-# Find PIDs
-ps aux | grep "tibber_relay.py\|web_backend.py"
+# Find PID
+ps aux | grep web_backend.py
 
 # Kill by PID
-kill <relay_pid> <web_pid>
+kill <pid>
 
-# Or kill all Python processes (careful!)
-pkill -f "tibber_relay.py"
+# Or kill by name
 pkill -f "web_backend.py"
 ```
 
@@ -210,15 +211,21 @@ def solar_status():
 - Verify with: `curl http://localhost:8000/api/status`
 - Temporarily disable Tailscale check in `web_backend.py`
 
-### Services Not Starting
-- Check logs: `tail -f tibber_relay.log web_backend.log`
+### Service Not Starting
+- Check logs: `tail -f web_backend.log`
 - Verify virtual environment: `source venv/bin/activate`
 - Check dependencies: `pip install -r requirements.txt`
 
+### No Price Data or "N/A" Prices
+- Wait for initial fetch (runs on startup)
+- Check logs for Tibber API errors
+- Verify TIBBER_API_TOKEN in `.env` file
+- Manual fetch: restart the service
+
 ### Relay Not Updating
-- The relay service is independent - web backend just reads its state
-- Check relay service is running: `ps aux | grep tibber_relay`
+- Scheduler runs in background thread - check logs for errors
 - Manual controls trigger 5-hour override period
+- Verify Shelly relay is accessible: `curl http://192.168.1.106/rpc/Shelly.GetStatus?id=0`
 
 ### Port 8000 Already in Use
 - Find process: `lsof -i :8000`
