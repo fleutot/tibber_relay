@@ -164,11 +164,13 @@ class Relay:
             self.turn(False)
 
 
-if __name__ == "__main__":
-    price_list = PriceList(n_cheapest_limit=5)
-    relay = Relay(relay_ip_addr, relay_instance_id, price_list,
-                  relay_mode=RelayMode.N_CHEAPEST_TODAY)
+# Initialize objects at module level so they can be imported
+price_list = PriceList(n_cheapest_limit=5)
+relay = Relay(relay_ip_addr, relay_instance_id, price_list,
+              relay_mode=RelayMode.N_CHEAPEST_TODAY)
 
+if __name__ == "__main__":
+    # Run scheduled tasks only when executed as main script
     schedule.every().hour.at(":00").do(relay.update)
     schedule.every().day.at("21:42").do(price_list.fetch)  # Fetch tomorrow's prices
 
