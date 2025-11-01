@@ -215,9 +215,51 @@ def api_get_config():
     return jsonify({
         'mode': relay._mode.name,
         'n_cheapest_limit': price_list.n_cheapest_limit,
+        'price_limit_sek': price_limit_sek,
         'manual_override_runs': relay.manual_override_nb_runs,
         'relay_ip': relay._ip
     })
+
+@api.route('/api/config', methods=['POST'])
+def api_update_config():
+    """Update configuration (mode, price limit, n_cheapest)."""
+    global price_limit_sek
+
+    try:
+        data = flask_request.get_json()
+
+        # Update mode
+        if 'mode' in data:
+            mode_str = data['mode']
+            if mode_str == 'PRICE_LIMIT':
+                relay._mode = RelayMode.PRICE_LIMIT
+            elif mode_str == 'N_CHEAPEST_TODAY':
+                relay._mode = RelayMode.N_CHEAPEST_TODAY
+            else:
+                return jsonify({'success': False, 'error': f'Invalid mode: {mode_str}'}), 400
+            print(f"Mode updated to: {relay._mode.name}")
+
+        # Update price limit (for PRICE_LIMIT mode)
+        if 'price_limit_sek' in data:
+            price_limit_sek = float(data['price_limit_sek'])
+            print(f"Price limit updated to: {price_limit_sek} SEK")
+
+        # Update n_cheapest_limit (for N_CHEAPEST_TODAY mode)
+        if 'n_cheapest_limit' in data:
+            price_list.n_cheapest_limit = int(data['n_cheapest_limit'])
+            print(f"N cheapest limit updated to: {price_list.n_cheapest_limit}")
+
+        return jsonify({
+            'success': True,
+            'message': 'Configuration updated',
+            'config': {
+                'mode': relay._mode.name,
+                'price_limit_sek': price_limit_sek,
+                'n_cheapest_limit': price_list.n_cheapest_limit
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @api.route('/api/command', methods=['POST'])
 def api_command():

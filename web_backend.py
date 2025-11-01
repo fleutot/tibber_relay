@@ -85,6 +85,17 @@ def get_config():
     except requests.RequestException as e:
         return jsonify({'error': f'Failed to communicate with relay service: {str(e)}'}), 503
 
+@app.route('/api/config', methods=['POST'])
+def update_config():
+    """Update configuration (mode, price limit, n_cheapest)."""
+    try:
+        data = request.get_json()
+        response = requests.post(f'{RELAY_API}/config', json=data, timeout=5)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({'success': False, 'error': f'Failed to communicate with relay service: {str(e)}'}), 503
+
 # Serve static files (HTML/CSS/JS)
 @app.route('/')
 def index():

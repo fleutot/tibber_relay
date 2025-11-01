@@ -145,6 +145,15 @@
             background-color: #dc2626;
         }
 
+        .btn-save {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background-color: #5568d3;
+        }
+
         .chart-card {
             grid-column: 1 / -1;
         }
@@ -194,6 +203,75 @@
         canvas {
             max-width: 100%;
         }
+
+        /* Configuration styles */
+        .config-group {
+            margin-bottom: 20px;
+        }
+
+        .config-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .radio-option input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .radio-option label {
+            margin: 0;
+            font-weight: normal;
+            cursor: pointer;
+        }
+
+        .input-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: #f9fafb;
+            border-radius: 6px;
+        }
+
+        .input-field input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .input-field span {
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .config-hint {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .config-group.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -221,6 +299,43 @@
             </div>
 
             <div class="card">
+                <h2>Configuration</h2>
+                <div class="config-group">
+                    <label>Operation Mode</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="modePriceLimit" name="mode" value="PRICE_LIMIT" onchange="updateConfigInputs()">
+                            <label for="modePriceLimit">Price Limit</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="modeNCheapest" name="mode" value="N_CHEAPEST_TODAY" onchange="updateConfigInputs()">
+                            <label for="modeNCheapest">N Cheapest Hours</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-group" id="priceLimitGroup">
+                    <div class="input-field">
+                        <label for="priceLimit">Price Limit:</label>
+                        <input type="number" id="priceLimit" step="0.01" min="0">
+                        <span>SEK/kWh</span>
+                    </div>
+                    <div class="config-hint">Relay turns ON when price is below this threshold</div>
+                </div>
+
+                <div class="config-group" id="nCheapestGroup">
+                    <div class="input-field">
+                        <label for="nCheapest">Cheapest Hours:</label>
+                        <input type="number" id="nCheapest" min="1" max="24">
+                        <span>hours/day</span>
+                    </div>
+                    <div class="config-hint">Relay turns ON during this many cheapest hours</div>
+                </div>
+
+                <button class="btn-save" style="width: 100%; margin-top: 8px;" onclick="saveConfig()">Save Configuration</button>
+            </div>
+
+            <div class="card">
                 <h2>Current Electricity Price</h2>
                 <div class="price-display" id="currentPrice">-- SEK</div>
                 <div class="info-text">Price per kWh including VAT</div>
@@ -238,7 +353,7 @@
     </div>
 
     <script>
-        let chart = null;
+        let currentConfig = {};
 
         // Fetch and update status
         async function updateStatus() {
@@ -268,9 +383,15 @@
                     priceDisplay.textContent = 'N/A';
                 }
 
-                // Update mode info
+                // Update mode info with relevant parameter
                 const modeInfo = document.getElementById('modeInfo');
-                modeInfo.innerHTML = `Mode: <span class="mode-badge">${data.mode}</span>`;
+                let modeDetail = '';
+                if (currentConfig.mode === 'PRICE_LIMIT') {
+                    modeDetail = ` (${currentConfig.price_limit_sek} SEK)`;
+                } else if (currentConfig.mode === 'N_CHEAPEST_TODAY') {
+                    modeDetail = ` (${currentConfig.n_cheapest_limit} hours)`;
+                }
+                modeInfo.innerHTML = `Mode: <span class="mode-badge">${data.mode}${modeDetail}</span>`;
 
                 // Update override warning
                 const overrideWarning = document.getElementById('overrideWarning');
@@ -291,6 +412,88 @@
             }
         }
 
+        // Fetch and load configuration
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const data = await response.json();
+                currentConfig = data;
+
+                // Set radio button
+                if (data.mode === 'PRICE_LIMIT') {
+                    document.getElementById('modePriceLimit').checked = true;
+                } else if (data.mode === 'N_CHEAPEST_TODAY') {
+                    document.getElementById('modeNCheapest').checked = true;
+                }
+
+                // Set input values
+                document.getElementById('priceLimit').value = data.price_limit_sek || 0.2;
+                document.getElementById('nCheapest').value = data.n_cheapest_limit || 5;
+
+                // Update UI based on mode
+                updateConfigInputs();
+
+            } catch (error) {
+                console.error('Error loading config:', error);
+            }
+        }
+
+        // Update config inputs based on selected mode
+        function updateConfigInputs() {
+            const mode = document.querySelector('input[name="mode"]:checked')?.value;
+
+            const priceLimitGroup = document.getElementById('priceLimitGroup');
+            const nCheapestGroup = document.getElementById('nCheapestGroup');
+
+            if (mode === 'PRICE_LIMIT') {
+                priceLimitGroup.classList.remove('hidden');
+                nCheapestGroup.classList.add('hidden');
+            } else if (mode === 'N_CHEAPEST_TODAY') {
+                priceLimitGroup.classList.add('hidden');
+                nCheapestGroup.classList.remove('hidden');
+            }
+        }
+
+        // Save configuration
+        async function saveConfig() {
+            try {
+                const mode = document.querySelector('input[name="mode"]:checked')?.value;
+                const priceLimit = parseFloat(document.getElementById('priceLimit').value);
+                const nCheapest = parseInt(document.getElementById('nCheapest').value);
+
+                if (!mode) {
+                    alert('Please select a mode');
+                    return;
+                }
+
+                const config = {
+                    mode: mode,
+                    price_limit_sek: priceLimit,
+                    n_cheapest_limit: nCheapest
+                };
+
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Configuration saved successfully!');
+                    loadConfig();
+                    updateStatus();
+                    updatePriceChart();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error saving config:', error);
+                alert('Failed to save configuration');
+            }
+        }
+
         // Fetch and update price chart
         async function updatePriceChart() {
             try {
@@ -304,13 +507,7 @@
                     return priceDate.toDateString() === now.toDateString();
                 });
 
-                const labels = todayPrices.map(p => {
-                    const date = new Date(p.time);
-                    return date.getHours().toString().padStart(2, '0') + ':00';
-                });
-                const values = todayPrices.map(p => p.price);
-
-                drawChart(labels, values, data.n_cheapest_limit);
+                drawChart(todayPrices, data.n_cheapest_limit);
 
             } catch (error) {
                 console.error('Error fetching prices:', error);
@@ -318,7 +515,7 @@
         }
 
         // Draw price chart
-        function drawChart(labels, values, nCheapest) {
+        function drawChart(priceData, nCheapest) {
             const canvas = document.getElementById('priceChart');
             const ctx = canvas.getContext('2d');
 
@@ -326,14 +523,14 @@
             canvas.width = canvas.offsetWidth;
             canvas.height = 300;
 
-            const padding = 40;
+            const padding = 60;
             const width = canvas.width - padding * 2;
             const height = canvas.height - padding * 2;
 
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            if (values.length === 0) {
+            if (priceData.length === 0) {
                 ctx.fillStyle = '#6b7280';
                 ctx.font = '16px sans-serif';
                 ctx.textAlign = 'center';
@@ -341,25 +538,45 @@
                 return;
             }
 
+            const values = priceData.map(p => p.price);
             const maxPrice = Math.max(...values);
             const minPrice = Math.min(...values);
             const priceRange = maxPrice - minPrice || 1;
+
+            // Add padding to y-axis (10% at bottom) so cheapest bars are visible
+            const yPadding = priceRange * 0.1;
+            const adjustedMin = minPrice - yPadding;
+            const adjustedRange = priceRange + yPadding;
 
             // Find cheapest hours
             const sortedPrices = [...values].sort((a, b) => a - b);
             const cheapestThreshold = sortedPrices[Math.min(nCheapest - 1, sortedPrices.length - 1)];
 
+            // Get current hour
+            const currentHour = new Date().getHours();
+
             // Draw bars
-            const barWidth = width / values.length;
-            values.forEach((price, i) => {
-                const barHeight = ((price - minPrice) / priceRange) * height;
+            const barWidth = width / priceData.length;
+            priceData.forEach((item, i) => {
+                const price = item.price;
+                const barHeight = ((price - adjustedMin) / adjustedRange) * height;
                 const x = padding + i * barWidth;
                 const y = padding + height - barHeight;
 
-                // Color based on if it's in cheapest hours
-                const isCheap = price <= cheapestThreshold;
-                ctx.fillStyle = isCheap ? 'rgba(16, 185, 129, 0.7)' : 'rgba(102, 126, 234, 0.7)';
+                const priceDate = new Date(item.time);
+                const hour = priceDate.getHours();
+                const isCurrentHour = hour === currentHour;
 
+                // Color based on if it's in cheapest hours or current hour
+                const isCheap = price <= cheapestThreshold;
+                let fillColor;
+                if (isCurrentHour) {
+                    fillColor = isCheap ? 'rgba(16, 185, 129, 1)' : 'rgba(102, 126, 234, 1)';  // Darker
+                } else {
+                    fillColor = isCheap ? 'rgba(16, 185, 129, 0.6)' : 'rgba(102, 126, 234, 0.6)';
+                }
+
+                ctx.fillStyle = fillColor;
                 ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
 
                 // Draw price on top
@@ -369,12 +586,17 @@
                 ctx.fillText(price.toFixed(2), x + barWidth / 2, y - 5);
             });
 
-            // Draw labels
+            // Draw labels (only hours divisible by 3: 0, 3, 6, 9, 12, 15, 18, 21)
             ctx.fillStyle = '#6b7280';
             ctx.font = '12px sans-serif';
             ctx.textAlign = 'center';
-            labels.forEach((label, i) => {
-                if (i % 2 === 0) {  // Show every other label to avoid crowding
+            priceData.forEach((item, i) => {
+                const priceDate = new Date(item.time);
+                const hour = priceDate.getHours();
+                // Only show labels for 0:00, 3:00, 6:00, 9:00, 12:00, 15:00, 18:00, 21:00
+                if (hour === 0 || hour === 3 || hour === 6 || hour === 9 ||
+                    hour === 12 || hour === 15 || hour === 18 || hour === 21) {
+                    const label = hour.toString().padStart(2, '0') + ':00';
                     const x = padding + i * barWidth + barWidth / 2;
                     ctx.fillText(label, x, canvas.height - 10);
                 }
@@ -382,8 +604,8 @@
 
             // Draw Y-axis labels
             ctx.textAlign = 'right';
-            ctx.fillText(maxPrice.toFixed(2), padding - 10, padding + 10);
-            ctx.fillText(minPrice.toFixed(2), padding - 10, padding + height);
+            ctx.fillText(maxPrice.toFixed(2) + ' SEK', padding - 10, padding + 10);
+            ctx.fillText(minPrice.toFixed(2) + ' SEK', padding - 10, padding + height);
         }
 
         // Control relay
@@ -413,6 +635,7 @@
 
         // Initial load
         updateStatus();
+        loadConfig();
         updatePriceChart();
 
         // Redraw chart on window resize
