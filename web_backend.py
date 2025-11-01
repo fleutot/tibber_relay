@@ -10,6 +10,7 @@ from flask import Flask, jsonify, request, abort, send_from_directory
 from datetime import datetime
 import requests
 import sys
+import os
 
 app = Flask(__name__, static_folder='static')
 
@@ -128,9 +129,13 @@ def serve_static(path):
     return send_from_directory('static', path)
 
 if __name__ == '__main__':
+    # Port can be configured via environment variable
+    # Default: 8000 for manual runs, systemd can set PORT=80
+    port = int(os.getenv('PORT', 8000))
+
     print("Starting Tibber Relay Web Backend...")
     print("Access restricted to Tailscale network (100.x.x.x)")
-    print("Dashboard available at http://<tailscale-ip>:8000/")
+    print(f"Dashboard available at http://<tailscale-ip>{':' + str(port) if port != 80 else ''}/")
 
-    # Run on all interfaces, but protected by Tailscale middleware
-    app.run(host='0.0.0.0', port=8000, debug=False)
+    # Run on all interfaces, protected by Tailscale middleware
+    app.run(host='0.0.0.0', port=port, debug=False)

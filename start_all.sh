@@ -2,7 +2,7 @@
 #
 # Start both Tibber Relay services
 # - tibber_relay.py: Core relay control + API (localhost:8001)
-# - web_backend.py: Web dashboard (port 8000, Tailscale protected)
+# - web_backend.py: Web dashboard (port 8000 by default, Tailscale protected)
 #
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"

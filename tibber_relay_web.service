@@ -1,0 +1,21 @@
+[Unit]
+Description=Tibber Relay Web Backend
+After=network.target tibber_relay.service
+Requires=tibber_relay.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/gauthier/sjobacken/tibber_relay
+Environment="PORT=80"
+ExecStart=/home/gauthier/sjobacken/tibber_relay/venv/bin/python3 /home/gauthier/sjobacken/tibber_relay/web_backend.py
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tibber_relay_web
+
+[Install]
+WantedBy=multi-user.target
