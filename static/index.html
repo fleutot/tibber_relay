@@ -254,16 +254,23 @@
         .input-field {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             padding: 10px;
             background-color: #f5f5dc;
             border-radius: 6px;
             border: 1px solid #d4a574;
         }
 
+        .input-field label {
+            white-space: nowrap;
+            flex-shrink: 0;
+            font-size: 0.95rem;
+        }
+
         .input-field input {
             flex: 1;
-            padding: 8px 12px;
+            min-width: 0;
+            padding: 8px 10px;
             border: 1px solid #d4a574;
             border-radius: 4px;
             font-size: 1rem;
@@ -272,7 +279,9 @@
 
         .input-field span {
             color: #6b5d4f;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .config-hint {
