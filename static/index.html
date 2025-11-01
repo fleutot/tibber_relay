@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tibber Relay Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            color: #667eea;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .status-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.on {
+            background-color: #10b981;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+        }
+
+        .status-dot.off {
+            background-color: #ef4444;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .price-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin: 12px 0;
+        }
+
+        .info-text {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-on {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .btn-on:hover {
+            background-color: #059669;
+        }
+
+        .btn-off {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .btn-off:hover {
+            background-color: #dc2626;
+        }
+
+        .chart-card {
+            grid-column: 1 / -1;
+        }
+
+        #priceChart {
+            width: 100%;
+            height: 300px;
+            margin-top: 16px;
+        }
+
+        .override-warning {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .override-warning.active {
+            display: block;
+        }
+
+        .override-warning strong {
+            color: #92400e;
+        }
+
+        .last-update {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .mode-badge {
+            display: inline-block;
+            background-color: #e0e7ff;
+            color: #4c1d95;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        canvas {
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tibber Relay Control</h1>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Relay Status</h2>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Loading...</span>
+                </div>
+                <div class="info-text" id="modeInfo">Mode: Loading...</div>
+
+                <div class="override-warning" id="overrideWarning">
+                    <strong>Manual Override Active</strong><br>
+                    <span id="overrideText"></span>
+                </div>
+
+                <div class="controls">
+                    <button class="btn-on" onclick="controlRelay('on')">Turn ON</button>
+                    <button class="btn-off" onclick="controlRelay('off')">Turn OFF</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Current Electricity Price</h2>
+                <div class="price-display" id="currentPrice">-- SEK</div>
+                <div class="info-text">Price per kWh including VAT</div>
+            </div>
+
+            <div class="card chart-card">
+                <h2>Today's Electricity Prices</h2>
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+
+        <div class="last-update">
+            Last updated: <span id="lastUpdate">Never</span>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+
+        // Fetch and update status
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                // Update relay status
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+
+                if (data.relay_on) {
+                    statusDot.className = 'status-dot on';
+                    statusText.textContent = 'ON';
+                    statusText.style.color = '#10b981';
+                } else {
+                    statusDot.className = 'status-dot off';
+                    statusText.textContent = 'OFF';
+                    statusText.style.color = '#ef4444';
+                }
+
+                // Update current price
+                const priceDisplay = document.getElementById('currentPrice');
+                if (data.current_price !== null) {
+                    priceDisplay.textContent = `${data.current_price.toFixed(2)} SEK`;
+                } else {
+                    priceDisplay.textContent = 'N/A';
+                }
+
+                // Update mode info
+                const modeInfo = document.getElementById('modeInfo');
+                modeInfo.innerHTML = `Mode: <span class="mode-badge">${data.mode}</span>`;
+
+                // Update override warning
+                const overrideWarning = document.getElementById('overrideWarning');
+                const overrideText = document.getElementById('overrideText');
+                if (data.override_hours_left > 0) {
+                    overrideWarning.className = 'override-warning active';
+                    overrideText.textContent = `Automatic control paused for ${data.override_hours_left} more hour(s)`;
+                } else {
+                    overrideWarning.className = 'override-warning';
+                }
+
+                // Update last update time
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+
+            } catch (error) {
+                console.error('Error fetching status:', error);
+                document.getElementById('statusText').textContent = 'Error';
+            }
+        }
+
+        // Fetch and update price chart
+        async function updatePriceChart() {
+            try {
+                const response = await fetch('/api/prices');
+                const data = await response.json();
+
+                const prices = data.prices;
+                const now = new Date();
+                const todayPrices = prices.filter(p => {
+                    const priceDate = new Date(p.time);
+                    return priceDate.toDateString() === now.toDateString();
+                });
+
+                const labels = todayPrices.map(p => {
+                    const date = new Date(p.time);
+                    return date.getHours().toString().padStart(2, '0') + ':00';
+                });
+                const values = todayPrices.map(p => p.price);
+
+                drawChart(labels, values, data.n_cheapest_limit);
+
+            } catch (error) {
+                console.error('Error fetching prices:', error);
+            }
+        }
+
+        // Draw price chart
+        function drawChart(labels, values, nCheapest) {
+            const canvas = document.getElementById('priceChart');
+            const ctx = canvas.getContext('2d');
+
+            // Set canvas size
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 300;
+
+            const padding = 40;
+            const width = canvas.width - padding * 2;
+            const height = canvas.height - padding * 2;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (values.length === 0) {
+                ctx.fillStyle = '#6b7280';
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('No price data available', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            const maxPrice = Math.max(...values);
+            const minPrice = Math.min(...values);
+            const priceRange = maxPrice - minPrice || 1;
+
+            // Find cheapest hours
+            const sortedPrices = [...values].sort((a, b) => a - b);
+            const cheapestThreshold = sortedPrices[Math.min(nCheapest - 1, sortedPrices.length - 1)];
+
+            // Draw bars
+            const barWidth = width / values.length;
+            values.forEach((price, i) => {
+                const barHeight = ((price - minPrice) / priceRange) * height;
+                const x = padding + i * barWidth;
+                const y = padding + height - barHeight;
+
+                // Color based on if it's in cheapest hours
+                const isCheap = price <= cheapestThreshold;
+                ctx.fillStyle = isCheap ? 'rgba(16, 185, 129, 0.7)' : 'rgba(102, 126, 234, 0.7)';
+
+                ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
+
+                // Draw price on top
+                ctx.fillStyle = '#374151';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(price.toFixed(2), x + barWidth / 2, y - 5);
+            });
+
+            // Draw labels
+            ctx.fillStyle = '#6b7280';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            labels.forEach((label, i) => {
+                if (i % 2 === 0) {  // Show every other label to avoid crowding
+                    const x = padding + i * barWidth + barWidth / 2;
+                    ctx.fillText(label, x, canvas.height - 10);
+                }
+            });
+
+            // Draw Y-axis labels
+            ctx.textAlign = 'right';
+            ctx.fillText(maxPrice.toFixed(2), padding - 10, padding + 10);
+            ctx.fillText(minPrice.toFixed(2), padding - 10, padding + height);
+        }
+
+        // Control relay
+        async function controlRelay(action) {
+            try {
+                const response = await fetch(`/api/relay/${action}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    updateStatus();  // Refresh status immediately
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error controlling relay:', error);
+                alert('Failed to control relay');
+            }
+        }
+
+        // Auto-update every 5 seconds
+        setInterval(updateStatus, 5000);
+
+        // Update price chart every minute
+        setInterval(updatePriceChart, 60000);
+
+        // Initial load
+        updateStatus();
+        updatePriceChart();
+
+        // Redraw chart on window resize
+        window.addEventListener('resize', updatePriceChart);
+    </script>
+</body>
+</html>
