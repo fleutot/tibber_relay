@@ -298,6 +298,7 @@
                     <span id="statusText">Laddar...</span>
                 </div>
                 <div class="info-text" id="modeInfo">Läge: Laddar...</div>
+                <div class="info-text" id="overrideInfo" style="display: none; color: #cd853f; font-weight: bold; margin-top: 8px;"></div>
             </div>
 
             <div class="card">
@@ -320,6 +321,8 @@
                     <button class="btn-on" onclick="controlRelay('on')">PÅ</button>
                     <button class="btn-off" onclick="controlRelay('off')">AV</button>
                 </div>
+
+                <button id="resumeAutoButton" class="btn-save" style="width: 100%; margin-top: 12px; display: none;" onclick="resumeAutomatic()">Återuppta automatisk styrning</button>
             </div>
 
             <div class="card">
@@ -418,14 +421,26 @@
                 const modeName = data.mode === 'PRICE_LIMIT' ? 'Prisgräns' : 'Billigaste timmar';
                 modeInfo.innerHTML = `Läge: <span class="mode-badge">${modeName}${modeDetail}</span>`;
 
-                // Update override warning
+                // Update override info in status card
+                const overrideInfo = document.getElementById('overrideInfo');
+                if (data.override_hours_left > 0) {
+                    overrideInfo.textContent = `⚠ Manuell styrning (${data.override_hours_left} timmar kvar)`;
+                    overrideInfo.style.display = 'block';
+                } else {
+                    overrideInfo.style.display = 'none';
+                }
+
+                // Update override warning and resume button
                 const overrideWarning = document.getElementById('overrideWarning');
                 const overrideText = document.getElementById('overrideText');
+                const resumeAutoButton = document.getElementById('resumeAutoButton');
                 if (data.override_hours_left > 0) {
                     overrideWarning.className = 'override-warning active';
                     overrideText.textContent = `Automatisk styrning pausad i ${data.override_hours_left} timme(r) till`;
+                    resumeAutoButton.style.display = 'block';
                 } else {
                     overrideWarning.className = 'override-warning';
+                    resumeAutoButton.style.display = 'none';
                 }
 
                 // Update last update time
@@ -653,6 +668,25 @@
             } catch (error) {
                 console.error('Error controlling relay:', error);
                 alert('Kunde inte styra relä');
+            }
+        }
+
+        // Resume automatic control
+        async function resumeAutomatic() {
+            try {
+                const response = await fetch('/api/resume', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    updateStatus();  // Refresh status immediately
+                } else {
+                    alert('Fel: ' + (data.error || 'Okänt fel'));
+                }
+            } catch (error) {
+                console.error('Error resuming automatic control:', error);
+                alert('Kunde inte återuppta automatisk styrning');
             }
         }
 

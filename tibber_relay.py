@@ -338,6 +338,16 @@ def api_command():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@api.route('/api/resume', methods=['POST'])
+def api_resume():
+    """Resume automatic control by clearing override."""
+    try:
+        relay._overridden_hours_left = 0
+        print("Override cleared - automatic control resumed")
+        return jsonify({'success': True, 'message': 'Automatic control resumed'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 def run_api_server():
     """Run Flask API server in background thread (localhost only)."""
     api.run(host='127.0.0.1', port=8001, debug=False, use_reloader=False)
