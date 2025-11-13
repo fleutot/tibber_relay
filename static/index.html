@@ -660,6 +660,23 @@
                 ctx.fillText(price.toFixed(2), x + barWidth / 2, y - 5);
             });
 
+            // Draw horizontal line at price limit (only in PRICE_LIMIT mode)
+            if (config.mode === 'PRICE_LIMIT') {
+                const priceLimit = config.price_limit_sek;
+                // Calculate y position for the price limit line
+                const limitY = padding + height - ((priceLimit - adjustedMin) / adjustedRange) * height;
+
+                // Draw the line
+                ctx.strokeStyle = 'rgba(30, 144, 255, 0.4)';  // Faint blue
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);  // Dashed line
+                ctx.beginPath();
+                ctx.moveTo(padding, limitY);
+                ctx.lineTo(padding + width, limitY);
+                ctx.stroke();
+                ctx.setLineDash([]);  // Reset to solid line
+            }
+
             // Draw labels (only hours divisible by 3: 0, 3, 6, 9, 12, 15, 18, 21)
             ctx.fillStyle = '#6b5d4f';
             ctx.font = '12px Georgia';
