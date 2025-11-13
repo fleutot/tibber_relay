@@ -557,7 +557,7 @@
                     return priceDate.toDateString() === now.toDateString();
                 });
 
-                drawChart(todayPrices, data.n_cheapest_limit);
+                drawChart(todayPrices, currentConfig);
 
             } catch (error) {
                 console.error('Error fetching prices:', error);
@@ -565,7 +565,7 @@
         }
 
         // Draw price chart
-        function drawChart(priceData, nCheapest) {
+        function drawChart(priceData, config) {
             const canvas = document.getElementById('priceChart');
             const ctx = canvas.getContext('2d');
 
@@ -598,9 +598,31 @@
             const adjustedMin = minPrice - yPadding;
             const adjustedRange = priceRange + yPadding;
 
-            // Find cheapest hours
-            const sortedPrices = [...values].sort((a, b) => a - b);
-            const cheapestThreshold = sortedPrices[Math.min(nCheapest - 1, sortedPrices.length - 1)];
+            // Determine which hours should be shown as active based on mode
+            let showHourActive;
+            if (config.mode === 'PRICE_LIMIT') {
+                // In price limit mode, show bars cheaper than the limit as active
+                const priceLimit = config.price_limit_sek;
+                showHourActive = (price) => price < priceLimit;
+            } else {
+                // In N_CHEAPEST mode, show the N cheapest hours as active
+                const nCheapest = config.n_cheapest_limit;
+                const sortedPrices = [...values].sort((a, b) => a - b);
+                const cheapestThreshold = sortedPrices[Math.min(nCheapest - 1, sortedPrices.length - 1)];
+                showHourActive = (price) => price <= cheapestThreshold;
+            }
+
+            // Choose colors based on mode
+            let activeColorVivid, activeColorFaded;
+            if (config.mode === 'PRICE_LIMIT') {
+                // Blue shades for price limit mode
+                activeColorVivid = 'rgba(30, 144, 255, 1)';     // Dodger blue (vivid for current hour)
+                activeColorFaded = 'rgba(30, 144, 255, 0.6)';   // Dodger blue (faded)
+            } else {
+                // Green shades for cheapest hours mode
+                activeColorVivid = 'rgba(34, 139, 34, 1)';      // Forest green (vivid for current hour)
+                activeColorFaded = 'rgba(34, 139, 34, 0.6)';    // Forest green (faded)
+            }
 
             // Get current hour
             const currentHour = new Date().getHours();
@@ -617,13 +639,15 @@
                 const hour = priceDate.getHours();
                 const isCurrentHour = hour === currentHour;
 
-                // Color based on if it's in cheapest hours or current hour
-                const isCheap = price <= cheapestThreshold;
+                // Color based on mode and whether this hour should be shown as active
+                const shouldShowActive = showHourActive(price);
                 let fillColor;
                 if (isCurrentHour) {
-                    fillColor = isCheap ? 'rgba(34, 139, 34, 1)' : 'rgba(139, 69, 19, 1)';  // Darker
+                    // Current hour gets vivid color (highlighted)
+                    fillColor = shouldShowActive ? activeColorVivid : 'rgba(139, 69, 19, 1)';
                 } else {
-                    fillColor = isCheap ? 'rgba(34, 139, 34, 0.6)' : 'rgba(139, 69, 19, 0.6)';
+                    // Other hours get faded color
+                    fillColor = shouldShowActive ? activeColorFaded : 'rgba(139, 69, 19, 0.6)';
                 }
 
                 ctx.fillStyle = fillColor;
