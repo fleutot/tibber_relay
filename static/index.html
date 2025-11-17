@@ -312,31 +312,7 @@
             </div>
 
             <div class="card">
-                <h2>Manuell styrning</h2>
-                <div class="config-group">
-                    <div class="input-field">
-                        <label for="overrideHours">Antal timmar:</label>
-                        <input type="number" id="overrideHours" min="1" max="24" value="6">
-                        <span>timmar</span>
-                    </div>
-                    <div class="config-hint">Pausar automatisk styrning under vald period</div>
-                </div>
-
-                <div class="override-warning" id="overrideWarning">
-                    <strong>Manuell styrning aktiv</strong><br>
-                    <span id="overrideText"></span>
-                </div>
-
-                <div class="controls">
-                    <button class="btn-on" onclick="controlRelay('on')">PÅ</button>
-                    <button class="btn-off" onclick="controlRelay('off')">AV</button>
-                </div>
-
-                <button id="resumeAutoButton" class="btn-save" style="width: 100%; margin-top: 12px; display: none;" onclick="resumeAutomatic()">Återuppta automatisk styrning</button>
-            </div>
-
-            <div class="card">
-                <h2>Inställningar</h2>
+                <h2>Automatik</h2>
                 <div class="config-group">
                     <label>Driftläge</label>
                     <div class="radio-group">
@@ -370,6 +346,30 @@
                 </div>
 
                 <button class="btn-save" style="width: 100%; margin-top: 8px;" onclick="saveConfig()">Spara inställningar</button>
+            </div>
+
+            <div class="card">
+                <h2>Manuell styrning</h2>
+                <div class="config-group">
+                    <div class="input-field">
+                        <label for="overrideHours">Antal timmar:</label>
+                        <input type="number" id="overrideHours" min="1" max="24" value="6">
+                        <span>timmar</span>
+                    </div>
+                    <div class="config-hint">Pausar automatisk styrning under vald period</div>
+                </div>
+
+                <div class="override-warning" id="overrideWarning">
+                    <strong>Manuell styrning aktiv</strong><br>
+                    <span id="overrideText"></span>
+                </div>
+
+                <div class="controls">
+                    <button class="btn-on" onclick="controlRelay('on')">PÅ</button>
+                    <button class="btn-off" onclick="controlRelay('off')">AV</button>
+                </div>
+
+                <button id="resumeAutoButton" class="btn-save" style="width: 100%; margin-top: 12px; display: none;" onclick="resumeAutomatic()">Återuppta automatisk styrning</button>
             </div>
 
             <div class="card">
