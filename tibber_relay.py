@@ -146,6 +146,7 @@ class Relay:
         self._mode = relay_mode
         self._prev_status = None  # Status set by this script
         self._overridden_hours_left = 0
+        self._override_state = None  # None (auto), True (forced on), False (forced off)
         self.manual_override_nb_runs = manual_override_nb_runs  # Override delay
 
     def status_get(self):
@@ -239,6 +240,7 @@ def api_get_status():
         'current_price': current_price,
         'mode': relay._mode.name,
         'override_hours_left': relay._overridden_hours_left,
+        'override_state': relay._override_state,
         'timestamp': datetime.now().isoformat()
     })
 
@@ -325,12 +327,14 @@ def api_command():
             relay.turn(True)
             if override_hours is not None:
                 relay._overridden_hours_left = int(override_hours)
+                relay._override_state = True
                 print(f"Relay turned on with {override_hours} hour override")
             return jsonify({'success': True, 'message': 'Relay turned on'})
         elif command == 'turn_off':
             relay.turn(False)
             if override_hours is not None:
                 relay._overridden_hours_left = int(override_hours)
+                relay._override_state = False
                 print(f"Relay turned off with {override_hours} hour override")
             return jsonify({'success': True, 'message': 'Relay turned off'})
         else:
@@ -343,6 +347,7 @@ def api_resume():
     """Resume automatic control by clearing override."""
     try:
         relay._overridden_hours_left = 0
+        relay._override_state = None
         print("Override cleared - automatic control resumed")
         return jsonify({'success': True, 'message': 'Automatic control resumed'})
     except Exception as e:

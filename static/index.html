@@ -391,12 +391,14 @@
 
     <script>
         let currentConfig = {};
+        let currentStatus = {};
 
         // Fetch and update status
         async function updateStatus() {
             try {
                 const response = await fetch('/api/status');
                 const data = await response.json();
+                currentStatus = data;
 
                 // Update relay status
                 const statusDot = document.getElementById('statusDot');
@@ -557,7 +559,7 @@
                     return priceDate.toDateString() === now.toDateString();
                 });
 
-                drawChart(todayPrices, currentConfig);
+                drawChart(todayPrices, currentConfig, currentStatus);
 
             } catch (error) {
                 console.error('Error fetching prices:', error);
@@ -565,7 +567,7 @@
         }
 
         // Draw price chart
-        function drawChart(priceData, config) {
+        function drawChart(priceData, config, status = {}) {
             const canvas = document.getElementById('priceChart');
             const ctx = canvas.getContext('2d');
 
@@ -626,6 +628,18 @@
 
             // Get current hour
             const currentHour = new Date().getHours();
+            const overrideHoursLeft = status.override_hours_left || 0;
+
+            // Calculate which hours are in manual override
+            const isHourOverridden = (hour) => {
+                if (overrideHoursLeft === 0) return false;
+
+                // Only highlight future hours (current hour and beyond)
+                if (hour < currentHour) return false;
+
+                const hourDiff = hour - currentHour;
+                return hourDiff <= overrideHoursLeft;
+            };
 
             // Draw bars
             const barWidth = width / priceData.length;
@@ -638,19 +652,43 @@
                 const priceDate = new Date(item.time);
                 const hour = priceDate.getHours();
                 const isCurrentHour = hour === currentHour;
+                const isOverridden = isHourOverridden(hour);
 
-                // Color based on mode and whether this hour should be shown as active
+                // Determine base color (what it would be in auto mode)
                 const shouldShowActive = showHourActive(price);
-                let fillColor;
+                let baseColor;
                 if (isCurrentHour) {
                     // Current hour gets vivid color (highlighted)
-                    fillColor = shouldShowActive ? activeColorVivid : 'rgba(139, 69, 19, 1)';
+                    baseColor = shouldShowActive ? activeColorVivid : 'rgba(139, 69, 19, 1)';
                 } else {
                     // Other hours get faded color
-                    fillColor = shouldShowActive ? activeColorFaded : 'rgba(139, 69, 19, 0.6)';
+                    baseColor = shouldShowActive ? activeColorFaded : 'rgba(139, 69, 19, 0.6)';
                 }
 
-                ctx.fillStyle = fillColor;
+                // Apply gradient if overridden
+                if (isOverridden) {
+                    let overrideColor;
+                    if (status.override_state === true) {
+                        // Forced ON: red
+                        overrideColor = isCurrentHour ? '#dc143c' : 'rgba(220, 20, 60, 0.6)';
+                    } else if (status.override_state === false) {
+                        // Forced OFF: dark slate blue
+                        overrideColor = isCurrentHour ? '#2f4f6f' : 'rgba(47, 79, 111, 0.6)';
+                    } else {
+                        // Fallback to red if state is unknown
+                        overrideColor = isCurrentHour ? '#dc143c' : 'rgba(220, 20, 60, 0.6)';
+                    }
+
+                    const gradient = ctx.createLinearGradient(x, y + barHeight, x, y);
+                    gradient.addColorStop(0, baseColor);      // Bottom: original color
+                    gradient.addColorStop(0.2, baseColor);    // 20% up: still original color
+                    gradient.addColorStop(0.8, overrideColor); // 80% up: override color
+                    gradient.addColorStop(1, overrideColor);   // Top: solid override color
+                    ctx.fillStyle = gradient;
+                } else {
+                    ctx.fillStyle = baseColor;
+                }
+
                 ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
 
                 // Draw price on top
