@@ -348,6 +348,8 @@ def api_resume():
     try:
         relay._overridden_hours_left = 0
         relay._override_state = None
+        relay._prev_status = None  # Reset to prevent external change detection
+        relay.update()  # Immediately apply automatic control
         print("Override cleared - automatic control resumed")
         return jsonify({'success': True, 'message': 'Automatic control resumed'})
     except Exception as e:
