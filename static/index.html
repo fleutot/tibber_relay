@@ -506,6 +506,26 @@
             }
         }
 
+        // Resume automatic control
+        async function resumeAutomatic() {
+            try {
+                const response = await fetch('/api/resume', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    await updateStatus();  // Wait for status to update
+                    updatePriceChart();  // Redraw chart with updated status
+                } else {
+                    alert('Fel: ' + (data.error || 'Okänt fel'));
+                }
+            } catch (error) {
+                console.error('Error resuming automatic control:', error);
+                alert('Kunde inte återuppta automatisk styrning');
+            }
+        }
+
         // Save configuration
         async function saveConfig() {
             try {
@@ -750,7 +770,8 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    updateStatus();  // Refresh status immediately
+                    await updateStatus();  // Wait for status to update
+                    updatePriceChart();  // Redraw chart with updated status
                 } else {
                     alert('Fel: ' + (data.error || 'Okänt fel'));
                 }
@@ -769,7 +790,8 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    updateStatus();  // Refresh status immediately
+                    await updateStatus();  // Wait for status to update
+                    updatePriceChart();  // Redraw chart with updated status
                 } else {
                     alert('Fel: ' + (data.error || 'Okänt fel'));
                 }
