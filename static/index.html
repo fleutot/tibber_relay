@@ -605,7 +605,7 @@
                 const tomorrowCard = document.getElementById('tomorrowChartCard');
                 if (tomorrowPrices.length > 0) {
                     tomorrowCard.style.display = 'block';
-                    drawChart(tomorrowPrices, currentConfig, {}, 'tomorrowChart', []);
+                    drawChart(tomorrowPrices, currentConfig, currentStatus, 'tomorrowChart', []);
                 } else {
                     tomorrowCard.style.display = 'none';
                 }
@@ -688,17 +688,18 @@
             const overrideHoursLeft = status.override_hours_left || 0;
             const isTomorrowChart = canvasId === 'tomorrowChart';
 
-            // Calculate which hours are in manual override
-            const isHourOverridden = (hour) => {
-                // No overrides shown on tomorrow's chart
-                if (isTomorrowChart) return false;
+            // Calculate which hours are in manual override based on actual datetime
+            const isHourOverridden = (priceDateTime) => {
                 if (overrideHoursLeft === 0) return false;
 
-                // Only highlight future hours (current hour and beyond)
-                if (hour < currentHour) return false;
+                const now = new Date();
+                const currentHourStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
 
-                const hourDiff = hour - currentHour;
-                return hourDiff <= overrideHoursLeft;
+                // Calculate the end of override period
+                const overrideEndTime = new Date(currentHourStart.getTime() + overrideHoursLeft * 60 * 60 * 1000);
+
+                // Check if this hour falls within the override period
+                return priceDateTime >= currentHourStart && priceDateTime < overrideEndTime;
             };
 
             // Draw bars
@@ -713,10 +714,11 @@
                 const hour = priceDate.getHours();
                 // Only highlight current hour on today's chart
                 const now = new Date();
+                const currentHourStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
                 const isCurrentHour = !isTomorrowChart &&
                                       hour === currentHour &&
                                       priceDate.toDateString() === now.toDateString();
-                const isPastHour = hour < currentHour;
+                const isPastHour = priceDate < currentHourStart && !isTomorrowChart;
                 const historicalState = stateByHour[hour];
 
                 // Determine colors based on historical data (for past hours) or predictions (for current/future)
@@ -764,7 +766,7 @@
                     }
                 } else {
                     // Use predictions for current/future hours
-                    isOverridden = isHourOverridden(hour);
+                    isOverridden = isHourOverridden(priceDate);
                     const shouldShowActive = showHourActive(price);
 
                     if (isCurrentHour) {
