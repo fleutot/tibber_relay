@@ -574,10 +574,14 @@
         // Fetch and update price chart
         async function updatePriceChart() {
             try {
-                const response = await fetch('/api/prices');
-                const data = await response.json();
+                const pricesResponse = await fetch('/api/prices');
+                const pricesData = await pricesResponse.json();
 
-                const prices = data.prices;
+                const historyResponse = await fetch('/api/state_history');
+                const historyData = await historyResponse.json();
+
+                const prices = pricesData.prices;
+                const stateHistory = historyData.states || [];
                 const now = new Date();
 
                 // Filter today's prices
@@ -594,14 +598,14 @@
                     return priceDate.toDateString() === tomorrow.toDateString();
                 });
 
-                // Draw today's chart
-                drawChart(todayPrices, currentConfig, currentStatus, 'priceChart');
+                // Draw today's chart with state history
+                drawChart(todayPrices, currentConfig, currentStatus, 'priceChart', stateHistory);
 
-                // Draw tomorrow's chart if data is available
+                // Draw tomorrow's chart if data is available (no history for tomorrow)
                 const tomorrowCard = document.getElementById('tomorrowChartCard');
                 if (tomorrowPrices.length > 0) {
                     tomorrowCard.style.display = 'block';
-                    drawChart(tomorrowPrices, currentConfig, {}, 'tomorrowChart');
+                    drawChart(tomorrowPrices, currentConfig, {}, 'tomorrowChart', []);
                 } else {
                     tomorrowCard.style.display = 'none';
                 }
@@ -612,9 +616,17 @@
         }
 
         // Draw price chart
-        function drawChart(priceData, config, status = {}, canvasId = 'priceChart') {
+        function drawChart(priceData, config, status = {}, canvasId = 'priceChart', stateHistory = []) {
             const canvas = document.getElementById(canvasId);
             const ctx = canvas.getContext('2d');
+
+            // Create lookup map for state history by hour
+            const stateByHour = {};
+            stateHistory.forEach(state => {
+                const stateDate = new Date(state.time);
+                const hour = stateDate.getHours();
+                stateByHour[hour] = state;
+            });
 
             // Set canvas size
             canvas.width = canvas.offsetWidth;
@@ -704,44 +716,94 @@
                 const isCurrentHour = !isTomorrowChart &&
                                       hour === currentHour &&
                                       priceDate.toDateString() === now.toDateString();
-                const isOverridden = isHourOverridden(hour);
+                const isPastHour = hour < currentHour;
+                const historicalState = stateByHour[hour];
 
-                // Determine base color (what it would be in auto mode)
-                const shouldShowActive = showHourActive(price);
+                // Determine colors based on historical data (for past hours) or predictions (for current/future)
                 let baseColor;
-                if (isCurrentHour) {
-                    // Current hour gets vivid color (highlighted)
-                    baseColor = shouldShowActive ? activeColorVivid : 'rgba(139, 69, 19, 1)';
-                } else {
-                    // Other hours get faded color
-                    baseColor = shouldShowActive ? activeColorFaded : 'rgba(139, 69, 19, 0.6)';
-                }
+                let isOverridden = false;
+                let historicalRelayOn = false;
 
-                // Apply gradient if overridden
-                if (isOverridden) {
-                    let overrideColor;
-                    if (status.override_state === true) {
-                        // Forced ON: red
-                        overrideColor = isCurrentHour ? '#dc143c' : 'rgba(220, 20, 60, 0.6)';
-                    } else if (status.override_state === false) {
-                        // Forced OFF: dark slate blue
-                        overrideColor = isCurrentHour ? '#2f4f6f' : 'rgba(47, 79, 111, 0.6)';
+                if (isPastHour && historicalState) {
+                    // Use historical data for past hours
+                    historicalRelayOn = historicalState.relay_on;
+                    const historicalMode = historicalState.mode;
+                    const historicalOverride = historicalState.override_state;
+
+                    // Determine base color from historical mode and actual state
+                    let historicalActiveColor, historicalInactiveColor;
+                    if (historicalMode === 'N_CHEAPEST_TODAY') {
+                        historicalActiveColor = 'rgba(34, 139, 34, 0.6)';  // Green
+                        historicalInactiveColor = 'rgba(139, 69, 19, 0.6)'; // Brown
                     } else {
-                        // Fallback to red if state is unknown
-                        overrideColor = isCurrentHour ? '#dc143c' : 'rgba(220, 20, 60, 0.6)';
+                        historicalActiveColor = 'rgba(30, 144, 255, 0.6)';  // Blue
+                        historicalInactiveColor = 'rgba(139, 69, 19, 0.6)'; // Brown
                     }
 
-                    const gradient = ctx.createLinearGradient(x, y + barHeight, x, y);
-                    gradient.addColorStop(0, baseColor);      // Bottom: original color
-                    gradient.addColorStop(0.2, baseColor);    // 20% up: still original color
-                    gradient.addColorStop(0.8, overrideColor); // 80% up: override color
-                    gradient.addColorStop(1, overrideColor);   // Top: solid override color
-                    ctx.fillStyle = gradient;
+                    // Use actual historical relay state (not predicted)
+                    baseColor = historicalRelayOn ? historicalActiveColor : historicalInactiveColor;
+
+                    // Check if it was overridden
+                    if (historicalOverride !== null) {
+                        isOverridden = true;
+                        let overrideColor;
+                        if (historicalOverride === true) {
+                            overrideColor = 'rgba(220, 20, 60, 0.6)';  // Red
+                        } else {
+                            overrideColor = 'rgba(47, 79, 111, 0.6)';  // Dark slate blue
+                        }
+
+                        const gradient = ctx.createLinearGradient(x, y + barHeight, x, y);
+                        gradient.addColorStop(0, baseColor);
+                        gradient.addColorStop(0.2, baseColor);
+                        gradient.addColorStop(0.8, overrideColor);
+                        gradient.addColorStop(1, overrideColor);
+                        ctx.fillStyle = gradient;
+                    } else {
+                        ctx.fillStyle = baseColor;
+                    }
                 } else {
-                    ctx.fillStyle = baseColor;
+                    // Use predictions for current/future hours
+                    isOverridden = isHourOverridden(hour);
+                    const shouldShowActive = showHourActive(price);
+
+                    if (isCurrentHour) {
+                        baseColor = shouldShowActive ? activeColorVivid : 'rgba(139, 69, 19, 1)';
+                    } else {
+                        baseColor = shouldShowActive ? activeColorFaded : 'rgba(139, 69, 19, 0.6)';
+                    }
+
+                    if (isOverridden) {
+                        let overrideColor;
+                        if (status.override_state === true) {
+                            overrideColor = isCurrentHour ? '#dc143c' : 'rgba(220, 20, 60, 0.6)';
+                        } else if (status.override_state === false) {
+                            overrideColor = isCurrentHour ? '#2f4f6f' : 'rgba(47, 79, 111, 0.6)';
+                        } else {
+                            overrideColor = isCurrentHour ? '#dc143c' : 'rgba(220, 20, 60, 0.6)';
+                        }
+
+                        const gradient = ctx.createLinearGradient(x, y + barHeight, x, y);
+                        gradient.addColorStop(0, baseColor);
+                        gradient.addColorStop(0.2, baseColor);
+                        gradient.addColorStop(0.8, overrideColor);
+                        gradient.addColorStop(1, overrideColor);
+                        ctx.fillStyle = gradient;
+                    } else {
+                        ctx.fillStyle = baseColor;
+                    }
                 }
 
+                // Draw the bar
                 ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
+
+                // Draw bottom border for past hours with historical data
+                if (isPastHour && historicalState) {
+                    const borderHeight = 4;
+                    const borderColor = historicalRelayOn ? '#dc143c' : '#4682b4';  // Red for ON, steel blue for OFF
+                    ctx.fillStyle = borderColor;
+                    ctx.fillRect(x + 2, padding + height - borderHeight, barWidth - 4, borderHeight);
+                }
 
                 // Draw price on top
                 ctx.fillStyle = '#3d2817';

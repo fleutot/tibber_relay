@@ -30,6 +30,9 @@ price_data = {}
 # Configuration file
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'config.json')
 
+# State log file
+STATE_LOG_FILE = os.path.join(os.path.dirname(__file__), 'relay_state_log.json')
+
 def load_config():
     """Load configuration from config.json file."""
     global price_limit_sek
@@ -68,6 +71,46 @@ def save_config(mode, price_limit, n_cheapest):
         print(f"Configuration saved to {CONFIG_FILE}")
     except Exception as e:
         print(f"Error saving config file: {e}", file=sys.stderr)
+
+def log_relay_state(relay_on, mode, override_state):
+    """Append current relay state to log file."""
+    now = datetime.now().replace(minute=0, second=0, microsecond=0)
+
+    state_entry = {
+        'time': now.isoformat(),
+        'relay_on': relay_on,
+        'mode': mode.name,
+        'override_state': override_state
+    }
+
+    try:
+        # Load existing log
+        if os.path.exists(STATE_LOG_FILE):
+            with open(STATE_LOG_FILE, 'r') as f:
+                states = json.load(f)
+        else:
+            states = []
+
+        # Check if entry for this hour already exists
+        existing_index = None
+        for i, state in enumerate(states):
+            if state['time'] == now.isoformat():
+                existing_index = i
+                break
+
+        # Update or append
+        if existing_index is not None:
+            states[existing_index] = state_entry
+        else:
+            states.append(state_entry)
+
+        # Save
+        with open(STATE_LOG_FILE, 'w') as f:
+            json.dump(states, f, indent=2)
+
+        print(f"Logged state: relay_on={relay_on}, mode={mode.name}")
+    except Exception as e:
+        print(f"Error logging state: {e}", file=sys.stderr)
 
 class PriceList:
     def __init__(self, n_cheapest_limit=5):
@@ -206,6 +249,11 @@ class Relay:
                 raise ValueError(f"Unidentified mode")
 
             self.turn(enable)
+
+            # Log the state after update
+            current_status = self.status_get()
+            if current_status is not None:
+                log_relay_state(current_status, self._mode, self._override_state)
         except e:
             print("Could not fetch price for now, turn off")
             self.turn(False)

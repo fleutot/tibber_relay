@@ -11,6 +11,7 @@ from datetime import datetime
 import requests
 import sys
 import os
+import json
 
 app = Flask(__name__, static_folder='static')
 
@@ -116,6 +117,29 @@ def resume_automatic():
         return jsonify(response.json())
     except requests.RequestException as e:
         return jsonify({'success': False, 'error': f'Failed to communicate with relay service: {str(e)}'}), 503
+
+@app.route('/api/state_history')
+def get_state_history():
+    """Get relay state history (filtered to today)."""
+    state_log_file = os.path.join(os.path.dirname(__file__), 'relay_state_log.json')
+
+    if not os.path.exists(state_log_file):
+        return jsonify({'states': []})
+
+    try:
+        with open(state_log_file, 'r') as f:
+            all_states = json.load(f)
+
+        # Filter to only today's entries
+        today = datetime.now().date()
+        today_states = [
+            s for s in all_states
+            if datetime.fromisoformat(s['time']).date() == today
+        ]
+
+        return jsonify({'states': today_states})
+    except Exception as e:
+        return jsonify({'error': f'Failed to read state history: {str(e)}'}), 500
 
 # Serve static files (HTML/CSS/JS)
 @app.route('/')
