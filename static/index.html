@@ -836,10 +836,10 @@
             priceData.forEach((item, i) => {
                 const priceDate = new Date(item.time);
                 const hour = priceDate.getHours();
-                // Only show labels for 0:00, 3:00, 6:00, 9:00, 12:00, 15:00, 18:00, 21:00
+                // Only show labels for 0, 3, 6, 9, 12, 15, 18, 21
                 if (hour === 0 || hour === 3 || hour === 6 || hour === 9 ||
                     hour === 12 || hour === 15 || hour === 18 || hour === 21) {
-                    const label = hour.toString().padStart(2, '0') + ':00';
+                    const label = hour.toString().padStart(2, '0');
                     const x = padding + i * barWidth + barWidth / 2;
                     ctx.fillText(label, x, canvas.height - 10);
                 }
