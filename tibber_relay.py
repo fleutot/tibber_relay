@@ -369,13 +369,13 @@ if __name__ == "__main__":
 
     # Schedule tasks
     schedule.every().hour.at(":00").do(relay.update)
-    schedule.every().day.at("21:42").do(price_list.fetch)  # Fetch tomorrow's prices
+    schedule.every().day.at("13:15").do(price_list.fetch)  # Fetch tomorrow's prices
 
     # Initial fetch and update
     price_list.fetch()
     relay.update()
 
-    print("Scheduler running - relay updates hourly, prices fetched daily at 21:42")
+    print("Scheduler running - relay updates hourly, prices fetched daily at 13:15")
 
     # Main scheduler loop
     while True:
