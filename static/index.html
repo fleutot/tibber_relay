@@ -167,7 +167,7 @@
             padding: 16px 12px;
         }
 
-        #priceChart {
+        #priceChart, #tomorrowChart {
             width: 100%;
             height: 350px;
             margin-top: 12px;
@@ -382,6 +382,11 @@
                 <h2>Dagens elpriser [SEK]</h2>
                 <canvas id="priceChart"></canvas>
             </div>
+
+            <div class="card chart-card" id="tomorrowChartCard" style="display: none;">
+                <h2>Morgondagens elpriser [SEK]</h2>
+                <canvas id="tomorrowChart"></canvas>
+            </div>
         </div>
 
         <div class="last-update">
@@ -574,12 +579,32 @@
 
                 const prices = data.prices;
                 const now = new Date();
+
+                // Filter today's prices
                 const todayPrices = prices.filter(p => {
                     const priceDate = new Date(p.time);
                     return priceDate.toDateString() === now.toDateString();
                 });
 
-                drawChart(todayPrices, currentConfig, currentStatus);
+                // Filter tomorrow's prices
+                const tomorrow = new Date(now);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomorrowPrices = prices.filter(p => {
+                    const priceDate = new Date(p.time);
+                    return priceDate.toDateString() === tomorrow.toDateString();
+                });
+
+                // Draw today's chart
+                drawChart(todayPrices, currentConfig, currentStatus, 'priceChart');
+
+                // Draw tomorrow's chart if data is available
+                const tomorrowCard = document.getElementById('tomorrowChartCard');
+                if (tomorrowPrices.length > 0) {
+                    tomorrowCard.style.display = 'block';
+                    drawChart(tomorrowPrices, currentConfig, {}, 'tomorrowChart');
+                } else {
+                    tomorrowCard.style.display = 'none';
+                }
 
             } catch (error) {
                 console.error('Error fetching prices:', error);
@@ -587,8 +612,8 @@
         }
 
         // Draw price chart
-        function drawChart(priceData, config, status = {}) {
-            const canvas = document.getElementById('priceChart');
+        function drawChart(priceData, config, status = {}, canvasId = 'priceChart') {
+            const canvas = document.getElementById(canvasId);
             const ctx = canvas.getContext('2d');
 
             // Set canvas size
@@ -649,9 +674,12 @@
             // Get current hour
             const currentHour = new Date().getHours();
             const overrideHoursLeft = status.override_hours_left || 0;
+            const isTomorrowChart = canvasId === 'tomorrowChart';
 
             // Calculate which hours are in manual override
             const isHourOverridden = (hour) => {
+                // No overrides shown on tomorrow's chart
+                if (isTomorrowChart) return false;
                 if (overrideHoursLeft === 0) return false;
 
                 // Only highlight future hours (current hour and beyond)
@@ -671,7 +699,11 @@
 
                 const priceDate = new Date(item.time);
                 const hour = priceDate.getHours();
-                const isCurrentHour = hour === currentHour;
+                // Only highlight current hour on today's chart
+                const now = new Date();
+                const isCurrentHour = !isTomorrowChart &&
+                                      hour === currentHour &&
+                                      priceDate.toDateString() === now.toDateString();
                 const isOverridden = isHourOverridden(hour);
 
                 // Determine base color (what it would be in auto mode)
