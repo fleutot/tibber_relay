@@ -120,7 +120,7 @@ def resume_automatic():
 
 @app.route('/api/state_history')
 def get_state_history():
-    """Get relay state history (filtered to today)."""
+    """Get relay state history (filtered to specific date, defaults to today)."""
     state_log_file = os.path.join(os.path.dirname(__file__), 'relay_state_log.json')
 
     if not os.path.exists(state_log_file):
@@ -130,14 +130,21 @@ def get_state_history():
         with open(state_log_file, 'r') as f:
             all_states = json.load(f)
 
-        # Filter to only today's entries
-        today = datetime.now().date()
-        today_states = [
+        # Get date parameter (yesterday, today) or default to today
+        date_param = request.args.get('date', 'today')
+
+        if date_param == 'yesterday':
+            from datetime import timedelta
+            target_date = (datetime.now() - timedelta(days=1)).date()
+        else:  # default to today
+            target_date = datetime.now().date()
+
+        filtered_states = [
             s for s in all_states
-            if datetime.fromisoformat(s['time']).date() == today
+            if datetime.fromisoformat(s['time']).date() == target_date
         ]
 
-        return jsonify({'states': today_states})
+        return jsonify({'states': filtered_states})
     except Exception as e:
         return jsonify({'error': f'Failed to read state history: {str(e)}'}), 500
 
