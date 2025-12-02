@@ -156,7 +156,7 @@ class PriceList:
         if now not in self.data:
             print(f"!Warning: No price data for {now}",
                   file=sys.stderr)
-            raise Exception("Now price data available")
+            raise Exception("No price data available")
 
         print(f"Price at {now}: {self.data[now]}")
         return self.data[now]
@@ -192,6 +192,7 @@ class Relay:
         self._overridden_hours_left = 0
         self._override_state = None  # None (auto), True (forced on), False (forced off)
         self.manual_override_nb_runs = manual_override_nb_runs  # Override delay
+        self._errors = {}
 
     def status_get(self):
         try:
@@ -238,7 +239,7 @@ class Relay:
         print(f"-> Relay {enable_str}")
         self._prev_status = self.status_get()
 
-    def update(self):
+    def update(self, retry=True):
         try:
             if self._mode == RelayMode.PRICE_LIMIT:
                 enable = (
@@ -250,6 +251,7 @@ class Relay:
                 raise ValueError(f"Unidentified mode")
 
             self.turn(enable)
+            self._errors.pop('price_fetch', None)
 
             # Log the state after update
             current_status = self.status_get()
@@ -259,9 +261,19 @@ class Relay:
                 except:
                     current_price = None
                 log_relay_state(current_status, self._mode, self._override_state, current_price)
-        except e:
-            print("Could not fetch price for now, turn off")
-            self.turn(False)
+        except Exception as e:
+            if retry:
+                print("Price data missing, fetching fresh prices...")
+                self._price_list.fetch()
+                self.update(retry=False)
+            else:
+                error_msg = f"No price data available: {str(e)}"
+                print(error_msg)
+                self._errors['price_fetch'] = {
+                    'message': error_msg,
+                    'timestamp': datetime.now().isoformat()
+                }
+                self.turn(False)
 
 
 # Load saved configuration
@@ -294,6 +306,7 @@ def api_get_status():
         'mode': relay._mode.name,
         'override_hours_left': relay._overridden_hours_left,
         'override_state': relay._override_state,
+        'errors': relay._errors,
         'timestamp': datetime.now().isoformat()
     })
 
