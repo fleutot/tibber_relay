@@ -395,15 +395,15 @@
                 <canvas id="priceChart"></canvas>
             </div>
 
-            <details class="card chart-card" id="yesterdayChartCard" style="display: none;">
-                <summary>Gårdagen</summary>
-                <canvas id="yesterdayChart"></canvas>
-            </details>
-
             <div class="card chart-card" id="tomorrowChartCard" style="display: none;">
                 <h2>Morgondagens elpriser [SEK]</h2>
                 <canvas id="tomorrowChart"></canvas>
             </div>
+
+            <details class="card chart-card" id="yesterdayChartCard">
+                <summary>Gårdagen</summary>
+                <canvas id="yesterdayChart"></canvas>
+            </details>
         </div>
 
         <div class="last-update">
@@ -618,33 +618,27 @@
                 // Draw today's chart with state history
                 drawChart(todayPrices, currentConfig, currentStatus, 'priceChart', stateHistory);
 
-                // Show tomorrow's chart if data is available, otherwise show yesterday's
+                // Show tomorrow's chart if data is available
                 const tomorrowCard = document.getElementById('tomorrowChartCard');
-                const yesterdayCard = document.getElementById('yesterdayChartCard');
-
                 if (tomorrowPrices.length > 0) {
                     tomorrowCard.style.display = 'block';
-                    yesterdayCard.style.display = 'none';
                     drawChart(tomorrowPrices, currentConfig, currentStatus, 'tomorrowChart', []);
                 } else {
                     tomorrowCard.style.display = 'none';
+                }
 
-                    // Fetch and show yesterday's data
-                    const yesterdayHistoryResponse = await fetch('/api/state_history?date=yesterday');
-                    const yesterdayHistoryData = await yesterdayHistoryResponse.json();
-                    const yesterdayStates = yesterdayHistoryData.states || [];
+                // Always fetch and show yesterday's data
+                const yesterdayHistoryResponse = await fetch('/api/state_history?date=yesterday');
+                const yesterdayHistoryData = await yesterdayHistoryResponse.json();
+                const yesterdayStates = yesterdayHistoryData.states || [];
 
-                    if (yesterdayStates.length > 0) {
-                        yesterdayCard.style.display = 'block';
-                        // Convert state history to price format for display
-                        const yesterdayPrices = yesterdayStates.map(s => ({
-                            time: s.time,
-                            price: s.price
-                        }));
-                        drawChart(yesterdayPrices, currentConfig, currentStatus, 'yesterdayChart', yesterdayStates);
-                    } else {
-                        yesterdayCard.style.display = 'none';
-                    }
+                if (yesterdayStates.length > 0) {
+                    // Convert state history to price format for display
+                    const yesterdayPrices = yesterdayStates.map(s => ({
+                        time: s.time,
+                        price: s.price
+                    }));
+                    drawChart(yesterdayPrices, currentConfig, currentStatus, 'yesterdayChart', yesterdayStates);
                 }
 
             } catch (error) {
