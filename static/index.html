@@ -108,6 +108,15 @@
             font-style: italic;
         }
 
+        .error-banner {
+            background-color: #ff6b6b;
+            color: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
         .controls {
             display: flex;
             gap: 12px;
@@ -312,6 +321,10 @@
     <div class="container">
         <h1>Sjöbackens acktank</h1>
 
+        <div class="error-banner" id="errorBanner" style="display: none;">
+            <div id="errorMessage"></div>
+        </div>
+
         <div class="grid">
             <div class="card">
                 <h2>Relästatus</h2>
@@ -475,6 +488,17 @@
                 } else {
                     overrideWarning.className = 'override-warning';
                     resumeAutoButton.style.display = 'none';
+                }
+
+                // Update error banner
+                const errorBanner = document.getElementById('errorBanner');
+                const errorMessage = document.getElementById('errorMessage');
+                if (data.errors && data.errors.price_fetch) {
+                    const timestamp = new Date(data.errors.price_fetch.timestamp).toLocaleTimeString('sv-SE');
+                    errorMessage.innerHTML = `<strong>⚠ ${data.errors.price_fetch.message}</strong><br><small>Tid: ${timestamp}</small>`;
+                    errorBanner.style.display = 'block';
+                } else {
+                    errorBanner.style.display = 'none';
                 }
 
                 // Update last update time
