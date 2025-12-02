@@ -721,9 +721,9 @@
             // Choose colors based on mode
             let activeColorVivid, activeColorFaded;
             if (config.mode === 'PRICE_LIMIT') {
-                // Blue shades for price limit mode
-                activeColorVivid = 'rgba(30, 144, 255, 1)';     // Dodger blue (vivid for current hour)
-                activeColorFaded = 'rgba(30, 144, 255, 0.6)';   // Dodger blue (faded)
+                // Amber/golden shades for price limit mode
+                activeColorVivid = 'rgba(255, 165, 0, 1)';     // Amber (vivid for current hour)
+                activeColorFaded = 'rgba(255, 165, 0, 0.6)';   // Amber (faded)
             } else {
                 // Green shades for cheapest hours mode
                 activeColorVivid = 'rgba(34, 139, 34, 1)';      // Forest green (vivid for current hour)
@@ -874,7 +874,7 @@
                 const limitY = padding + height - ((priceLimit - adjustedMin) / adjustedRange) * height;
 
                 // Draw the line
-                ctx.strokeStyle = 'rgba(30, 144, 255, 0.4)';  // Faint blue
+                ctx.strokeStyle = 'rgba(255, 165, 0, 0.4)';  // Faint amber
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);  // Dashed line
                 ctx.beginPath();
