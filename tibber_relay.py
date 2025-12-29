@@ -216,6 +216,7 @@ class Relay:
         ):
             # Something else changed the status externally.
             self._overridden_hours_left = self.manual_override_nb_runs
+            self._override_state = status  # Record what state it was forced to
             self._prev_status = status
 
         if self._overridden_hours_left > 0:
@@ -237,6 +238,7 @@ class Relay:
             return
 
         print(f"-> Relay {enable_str}")
+        time.sleep(3)  # Give Shelly time to process command before checking status
         self._prev_status = self.status_get()
 
     def update(self, retry=True):
