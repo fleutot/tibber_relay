@@ -72,7 +72,7 @@ def save_config(mode, price_limit, n_cheapest):
     except Exception as e:
         print(f"Error saving config file: {e}", file=sys.stderr)
 
-def log_relay_state(relay_on, mode, override_state, price=None):
+def log_relay_state(relay_on, mode, override_state, price=None, mode_decision=None):
     """Append current relay state to log file."""
     now = datetime.now().replace(minute=0, second=0, microsecond=0)
 
@@ -81,7 +81,8 @@ def log_relay_state(relay_on, mode, override_state, price=None):
         'relay_on': relay_on,
         'mode': mode.name,
         'override_state': override_state,
-        'price': price
+        'price': price,
+        'mode_decision': mode_decision
     }
 
     try:
@@ -262,7 +263,7 @@ class Relay:
                     current_price = self._price_list.price_now_get()
                 except:
                     current_price = None
-                log_relay_state(current_status, self._mode, self._override_state, current_price)
+                log_relay_state(current_status, self._mode, self._override_state, current_price, enable)
         except Exception as e:
             if retry:
                 print("Price data missing, fetching fresh prices...")

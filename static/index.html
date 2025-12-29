@@ -802,6 +802,9 @@
                     historicalRelayOn = historicalState.relay_on;
                     const historicalMode = historicalState.mode;
                     const historicalOverride = historicalState.override_state;
+                    const historicalModeDecision = historicalState.mode_decision;
+
+                    console.log(`Hour ${hour}: override_state=${historicalOverride}, type=${typeof historicalOverride}, relay_on=${historicalRelayOn}, mode_decision=${historicalModeDecision}`);
 
                     // Determine base color from historical mode and actual state
                     let historicalActiveColor, historicalInactiveColor;
@@ -813,11 +816,15 @@
                         historicalInactiveColor = 'rgba(139, 69, 19, 0.6)'; // Brown
                     }
 
-                    // Use actual historical relay state (not predicted)
-                    baseColor = historicalRelayOn ? historicalActiveColor : historicalInactiveColor;
+                    // If overridden, use mode decision for base color; otherwise use actual state
+                    const stateForBaseColor = (historicalOverride !== null && historicalModeDecision !== null)
+                        ? historicalModeDecision
+                        : historicalRelayOn;
+                    baseColor = stateForBaseColor ? historicalActiveColor : historicalInactiveColor;
 
                     // Check if it was overridden
                     if (historicalOverride !== null) {
+                        console.log(`Hour ${hour}: OVERRIDE DETECTED, applying gradient`);
                         isOverridden = true;
                         let overrideColor;
                         if (historicalOverride === true) {
