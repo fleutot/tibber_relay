@@ -1,0 +1,19 @@
+[Unit]
+Description=Tibber Relay Control Service
+After=network.target
+
+[Service]
+Type=simple
+User=gauthier
+WorkingDirectory=/home/gauthier/sjobacken/tibber_relay
+ExecStart=/home/gauthier/sjobacken/tibber_relay/venv/bin/python3 /home/gauthier/sjobacken/tibber_relay/tibber_relay.py
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tibber_relay
+
+[Install]
+WantedBy=multi-user.target
