@@ -228,6 +228,10 @@ class Relay:
             self._overridden_hours_left -= 1
             return
 
+        if self._override_state is not None:
+            self._override_state = None
+            print("Override period ended, resuming automatic control")
+
         enable_str = "on" if enable else "off"
         try:
             requests.get(
