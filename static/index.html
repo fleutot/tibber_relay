@@ -797,7 +797,7 @@
                 let isOverridden = false;
                 let historicalRelayOn = false;
 
-                if (isPastHour && historicalState) {
+                if (historicalState && !isTomorrowChart) {
                     // Use historical data for past hours
                     historicalRelayOn = historicalState.relay_on;
                     const historicalMode = historicalState.mode;
