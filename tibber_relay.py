@@ -77,7 +77,7 @@ def log_relay_state(relay_on=None, mode=None, override_state=None, price=None, m
 
     If relay_obj is provided and other params are None, fetch current state from relay.
     """
-    now = datetime.now().replace(minute=0, second=0, microsecond=0)
+    now = datetime.now()
 
     # Fetch current state from relay if not provided
     if relay_obj is not None:
@@ -112,24 +112,14 @@ def log_relay_state(relay_on=None, mode=None, override_state=None, price=None, m
         else:
             states = []
 
-        # Check if entry for this hour already exists
-        existing_index = None
-        for i, state in enumerate(states):
-            if state['time'] == now.isoformat():
-                existing_index = i
-                break
-
-        # Update or append
-        if existing_index is not None:
-            states[existing_index] = state_entry
-        else:
-            states.append(state_entry)
+        # Always append (no deduplication)
+        states.append(state_entry)
 
         # Save
         with open(STATE_LOG_FILE, 'w') as f:
             json.dump(states, f, indent=2)
 
-        print(f"Logged state: relay_on={relay_on}, mode={mode.name}")
+        print(f"Logged state: relay_on={relay_on}, mode={mode.name}, time={now.isoformat()}")
     except Exception as e:
         print(f"Error logging state: {e}", file=sys.stderr)
 
