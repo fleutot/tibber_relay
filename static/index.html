@@ -675,13 +675,22 @@
             const canvas = document.getElementById(canvasId);
             const ctx = canvas.getContext('2d');
 
-            // Create lookup map for state history by hour
-            const stateByHour = {};
-            stateHistory.forEach(state => {
-                const stateDate = new Date(state.time);
-                const hour = stateDate.getHours();
-                stateByHour[hour] = state;
-            });
+            // Create lookup function for state history
+            // Returns the last state entry that occurred during or before the given hour
+            const getStateForHour = (hourDate) => {
+                if (stateHistory.length === 0) return null;
+
+                const hourEnd = new Date(hourDate.getTime() + 60 * 60 * 1000);
+
+                // Find all entries that occurred before or during this hour
+                const relevantStates = stateHistory.filter(state => {
+                    const stateDate = new Date(state.time);
+                    return stateDate < hourEnd;
+                });
+
+                // Return the last one
+                return relevantStates.length > 0 ? relevantStates[relevantStates.length - 1] : null;
+            };
 
             // Set canvas size
             canvas.width = canvas.offsetWidth;
@@ -790,14 +799,14 @@
                                       hour === currentHour &&
                                       priceDate.toDateString() === now.toDateString();
                 const isPastHour = priceDate < currentHourStart && !isTomorrowChart;
-                const historicalState = stateByHour[hour];
+                const historicalState = getStateForHour(priceDate);
 
                 // Determine colors based on historical data (for past hours) or predictions (for current/future)
                 let baseColor;
                 let isOverridden = false;
                 let historicalRelayOn = false;
 
-                if (isPastHour && historicalState) {
+                if (historicalState && !isTomorrowChart) {
                     // Use historical data for past hours
                     historicalRelayOn = historicalState.relay_on;
                     const historicalMode = historicalState.mode;

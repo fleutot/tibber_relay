@@ -72,9 +72,28 @@ def save_config(mode, price_limit, n_cheapest):
     except Exception as e:
         print(f"Error saving config file: {e}", file=sys.stderr)
 
-def log_relay_state(relay_on, mode, override_state, price=None, mode_decision=None):
-    """Append current relay state to log file."""
-    now = datetime.now().replace(minute=0, second=0, microsecond=0)
+def log_relay_state(relay_on=None, mode=None, override_state=None, price=None, mode_decision=None, relay_obj=None):
+    """Append current relay state to log file.
+
+    If relay_obj is provided and other params are None, fetch current state from relay.
+    """
+    now = datetime.now()
+
+    # Fetch current state from relay if not provided
+    if relay_obj is not None:
+        if relay_on is None:
+            relay_on = relay_obj.status_get()
+            if relay_on is None:
+                return  # Can't log without status
+        if mode is None:
+            mode = relay_obj._mode
+        if override_state is None:
+            override_state = relay_obj._override_state
+        if price is None:
+            try:
+                price = relay_obj._price_list.price_now_get()
+            except:
+                pass
 
     state_entry = {
         'time': now.isoformat(),
@@ -93,24 +112,14 @@ def log_relay_state(relay_on, mode, override_state, price=None, mode_decision=No
         else:
             states = []
 
-        # Check if entry for this hour already exists
-        existing_index = None
-        for i, state in enumerate(states):
-            if state['time'] == now.isoformat():
-                existing_index = i
-                break
-
-        # Update or append
-        if existing_index is not None:
-            states[existing_index] = state_entry
-        else:
-            states.append(state_entry)
+        # Always append (no deduplication)
+        states.append(state_entry)
 
         # Save
         with open(STATE_LOG_FILE, 'w') as f:
             json.dump(states, f, indent=2)
 
-        print(f"Logged state: relay_on={relay_on}, mode={mode.name}")
+        print(f"Logged state: relay_on={relay_on}, mode={mode.name}, time={now.isoformat()}")
     except Exception as e:
         print(f"Error logging state: {e}", file=sys.stderr)
 
@@ -401,6 +410,7 @@ def api_command():
             if override_hours is not None:
                 relay._overridden_hours_left = int(override_hours)
                 relay._override_state = True
+                log_relay_state(relay_obj=relay)
                 print(f"Relay turned on with {override_hours} hour override")
             return jsonify({'success': True, 'message': 'Relay turned on'})
         elif command == 'turn_off':
@@ -408,6 +418,7 @@ def api_command():
             if override_hours is not None:
                 relay._overridden_hours_left = int(override_hours)
                 relay._override_state = False
+                log_relay_state(relay_obj=relay)
                 print(f"Relay turned off with {override_hours} hour override")
             return jsonify({'success': True, 'message': 'Relay turned off'})
         else:
