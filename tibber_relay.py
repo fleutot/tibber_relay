@@ -128,6 +128,11 @@ class PriceList:
         self.n_cheapest_limit = n_cheapest_limit
         self.data = {}  # Initialize empty dict, populated by fetch()
 
+    def has_data(self):
+        """Check if price data exists for current hour"""
+        now = datetime.now().replace(minute=0, second=0, microsecond=0)
+        return now in self.data
+
     def fetch(self):
         headers = {
             "Authorization": f"Bearer {tibber_token}",
@@ -309,6 +314,9 @@ api = Flask(__name__)
 @api.route('/api/status')
 def api_get_status():
     """Get current relay status and price."""
+    if not price_list.has_data():
+        price_list.fetch()
+
     try:
         current_price = price_list.price_now_get()
     except Exception:
@@ -329,6 +337,9 @@ def api_get_status():
 @api.route('/api/prices')
 def api_get_prices():
     """Get all available price data."""
+    if not price_list.data:
+        price_list.fetch()
+
     prices = [
         {
             'time': time.isoformat(),
