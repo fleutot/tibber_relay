@@ -758,19 +758,19 @@
             }
 
             // Get current hour
-            const currentHour = new Date().getHours();
+            const now = new Date();
+            const currentHour = now.getHours();
             const overrideHoursLeft = status.override_hours_left || 0;
             const isTomorrowChart = canvasId === 'tomorrowChart';
+
+            // Calculate override period once
+            // Backend counts "update cycles to skip", so add 1 to include current hour
+            const currentHourStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
+            const overrideEndTime = new Date(currentHourStart.getTime() + (overrideHoursLeft + 1) * 60 * 60 * 1000);
 
             // Calculate which hours are in manual override based on actual datetime
             const isHourOverridden = (priceDateTime) => {
                 if (overrideHoursLeft === 0) return false;
-
-                const now = new Date();
-                const currentHourStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), 0, 0, 0);
-
-                // Calculate the end of override period
-                const overrideEndTime = new Date(currentHourStart.getTime() + overrideHoursLeft * 60 * 60 * 1000);
 
                 // Check if this hour falls within the override period
                 return priceDateTime >= currentHourStart && priceDateTime < overrideEndTime;
@@ -806,8 +806,8 @@
                 let isOverridden = false;
                 let historicalRelayOn = false;
 
-                if (historicalState && !isTomorrowChart) {
-                    // Use historical data for past hours
+                if (historicalState && isPastHour) {
+                    // Use historical data for past hours only
                     historicalRelayOn = historicalState.relay_on;
                     const historicalMode = historicalState.mode;
                     const historicalOverride = historicalState.override_state;
